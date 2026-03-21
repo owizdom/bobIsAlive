@@ -775,17 +775,63 @@ function TasksView({ tasks, alive, onRefresh }: { tasks: Task[]; alive: boolean;
 /* ─── On-Chain ─── */
 function ChainView({ strkBalance }: { strkBalance: string }) {
   const [chain, setChain] = useState<any>(null)
+  const [nftTxs, setNftTxs] = useState<any[]>([])
+  const org = useOrganism()
+
   useEffect(() => {
-    const poll = () => fetch('/api/chain').then(r => r.json()).then(setChain).catch(() => {})
+    const poll = () => {
+      fetch('/api/chain').then(r => r.json()).then(setChain).catch(() => {})
+      fetch('/api/nft/listings').then(r => r.json()).then(d => {
+        const txs = (d.listings || []).filter((l: any) => l.mintTxHash).map((l: any) => ({
+          type: l.sold ? 'nft-sold' : 'nft-mint', hash: l.mintTxHash, timestamp: l.listedAt,
+          detail: `"${l.title}" ${l.sold ? `sold for ${l.price} STRK` : `listed for ${l.price} STRK`}`,
+        }))
+        setNftTxs(txs)
+      }).catch(() => {})
+    }
     poll(); const i = setInterval(poll, 5000); return () => clearInterval(i)
   }, [])
 
   const voyagerUrl = (hash: string) => `https://sepolia.voyager.online/tx/${hash}`
+  const walletUrl = org?.nft?.wallet ? `https://sepolia.voyager.online/contract/${org.nft.wallet}` : '#'
+
+  // Merge chain txs + NFT txs, sort by time
+  const allTxs = [
+    ...(chain?.recentTxs || []),
+    ...nftTxs,
+  ].sort((a: any, b: any) => b.timestamp - a.timestamp)
+
+  const txBadge = (type: string) => {
+    if (type === 'heartbeat') return 'bg-green-bg text-green'
+    if (type === 'emergency') return 'bg-red-bg text-red'
+    if (type === 'swap') return 'bg-blue-bg text-blue'
+    if (type.includes('stake')) return 'bg-amber-bg text-amber'
+    if (type === 'death') return 'bg-red-bg text-red'
+    if (type.includes('nft')) return 'bg-purple-bg text-purple'
+    return 'bg-bg-alt text-text-4'
+  }
+
+  const txLabel = (type: string) => {
+    if (type === 'nft-mint') return 'mint'
+    if (type === 'nft-sold') return 'sale'
+    if (type === 'endur-stake') return 'stake'
+    if (type === 'stake-proof') return 'stake'
+    return type
+  }
 
   return (
     <div className="p-6 max-w-3xl">
-      <h3 className="text-[15px] font-bold font-display italic mb-1">On-Chain Activity</h3>
-      <p className="text-[12px] text-text-3 mb-6">All of bob's autonomous transactions on Starknet Sepolia. Heartbeats, staking, token swaps, and survival actions.</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h3 className="text-[15px] font-bold font-display italic mb-1">On-Chain Activity</h3>
+          <p className="text-[12px] text-text-3">All of bob's autonomous transactions on Starknet Sepolia.</p>
+        </div>
+        <a href={walletUrl} target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-bg-alt hover:border-blue/30 transition-colors text-[11px] font-semibold text-blue">
+          View full history on Voyager
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+      </div>
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
@@ -834,26 +880,22 @@ function ChainView({ strkBalance }: { strkBalance: string }) {
         </div>
       </div>
 
-      {/* Recent transactions */}
-      <h4 className="text-[13px] font-bold font-display italic mb-3">Recent Transactions</h4>
-      {(!chain?.recentTxs || chain.recentTxs.length === 0) ? (
+      {/* All transactions */}
+      <h4 className="text-[13px] font-bold font-display italic mb-3">All Transactions</h4>
+      {allTxs.length === 0 ? (
         <div className="text-center py-8 text-text-4 text-sm">No transactions yet. The first heartbeat will show up in about 5 minutes.</div>
       ) : (
         <div className="space-y-2">
-          {[...chain.recentTxs].reverse().map((tx: any, i: number) => (
+          {allTxs.map((tx: any, i: number) => (
             <div key={i} className="bg-surface rounded-lg border border-border p-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                  tx.type === 'heartbeat' ? 'bg-green-bg text-green'
-                  : tx.type === 'emergency' ? 'bg-red-bg text-red'
-                  : tx.type === 'swap' ? 'bg-blue-bg text-blue'
-                  : tx.type.includes('stake') ? 'bg-amber-bg text-amber'
-                  : tx.type === 'death' ? 'bg-red-bg text-red'
-                  : 'bg-bg-alt text-text-4'
-                }`}>{tx.type}</span>
-                <span className="font-mono text-[11px] text-text-3">{tx.hash.slice(0, 18)}...</span>
+              <div className="flex items-center gap-3 min-w-0">
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${txBadge(tx.type)}`}>{txLabel(tx.type)}</span>
+                <div className="min-w-0">
+                  <span className="font-mono text-[11px] text-text-3 block">{tx.hash.slice(0, 20)}...</span>
+                  {tx.detail && <span className="text-[10px] text-text-4 block truncate">{tx.detail}</span>}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <span className="text-[10px] text-text-4">{new Date(tx.timestamp).toLocaleTimeString()}</span>
                 <a href={voyagerUrl(tx.hash)} target="_blank" rel="noopener noreferrer"
                   className="text-[10px] text-blue hover:underline font-semibold">Voyager</a>
