@@ -385,18 +385,6 @@ async function doDoodle(
 
   console.log(`[DOODLE] Created: "${title}" → ${filename}`);
 
-  // Push to GitHub
-  let pushed = false;
-  if (process.env.GITHUB_TOKEN && process.env.GITHUB_REPO) {
-    try {
-      await pushToGitHub(`doodles/${filename}`, svg);
-      pushed = true;
-      console.log(`[DOODLE] Pushed to GitHub`);
-    } catch (e) {
-      console.warn(`[DOODLE] GitHub push failed: ${e instanceof Error ? e.message.slice(0, 60) : e}`);
-    }
-  }
-
   // List as NFT for sale
   let nftListed = false;
   try {
@@ -406,7 +394,7 @@ async function doDoodle(
     console.warn(`[DOODLE] NFT listing failed: ${e instanceof Error ? e.message.slice(0, 60) : e}`);
   }
 
-  const entry = { title, description, filename, timestamp: Date.now(), attestation, pushedToGithub: pushed, nftListed };
+  const entry = { title, description, filename, timestamp: Date.now(), attestation, pushedToGithub: false, nftListed };
   doodleLog.push(entry);
   if (doodleLog.length > 100) doodleLog.shift();
 
@@ -445,27 +433,3 @@ async function doSelfImprovement(agentId: string): Promise<{ type: "improve"; de
   }
 }
 
-async function pushToGitHub(filepath: string, content: string): Promise<void> {
-  const token = process.env.GITHUB_TOKEN;
-  const repo = process.env.GITHUB_REPO;
-  if (!token || !repo) return;
-
-  const apiUrl = `https://api.github.com/repos/${repo}/contents/${filepath}`;
-  const res = await fetch(apiUrl, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      Accept: "application/vnd.github.v3+json",
-    },
-    body: JSON.stringify({
-      message: `[organism] doodle: ${filepath}`,
-      content: Buffer.from(content).toString("base64"),
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`GitHub API ${res.status}: ${body.slice(0, 100)}`);
-  }
-}

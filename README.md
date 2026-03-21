@@ -156,9 +156,6 @@ STARKNET_RPC_URL=https://api.cartridge.gg/x/starknet/sepolia
 STARKNET_PRIVATE_KEY=0x...
 STARKNET_ACCOUNT_ADDRESS=0x...
 
-# GitHub (optional — auto-push doodles)
-GITHUB_TOKEN=...
-GITHUB_REPO=owner/repo
 ```
 
 ### Docker

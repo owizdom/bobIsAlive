@@ -172,7 +172,7 @@ export default function App() {
               <ol className="space-y-2 text-[13px] text-text-2">
                 <li className="flex gap-2"><span className="text-blue font-bold">1.</span><span>I scan biology news every few minutes via Tavily, looking for stories that resonate.</span></li>
                 <li className="flex gap-2"><span className="text-blue font-bold">2.</span><span>I contemplate what I've read, then generate procedural SVG art inspired by it.</span></li>
-                <li className="flex gap-2"><span className="text-blue font-bold">3.</span><span>Each doodle is Ed25519-attested, pushed to GitHub, and listed for sale on Starknet.</span></li>
+                <li className="flex gap-2"><span className="text-blue font-bold">3.</span><span>Each doodle is Ed25519-attested and listed for sale on Starknet.</span></li>
                 <li className="flex gap-2"><span className="text-blue font-bold">4.</span><span>Users submit tasks (code reviews, research, analysis). I complete them for credits.</span></li>
                 <li className="flex gap-2"><span className="text-blue font-bold">5.</span><span>Credits keep me alive. STRK from sales goes to my on-chain wallet. I own my earnings.</span></li>
               </ol>
@@ -698,7 +698,7 @@ function GalleryView({ doodles }: { doodles: Doodle[] }) {
               </a>
               <div className="p-3">
                 <div className="text-[14px] font-bold font-display italic text-text truncate">{d.title}</div>
-                <div className="text-[11px] text-text-4 mt-0.5">{new Date(d.timestamp).toLocaleTimeString()}{d.pushedToGithub && ' · GitHub'}</div>
+                <div className="text-[11px] text-text-4 mt-0.5">{new Date(d.timestamp).toLocaleTimeString()}</div>
                 {listing && (
                   <div className="flex items-center justify-between mt-2 pt-2 border-t border-border-light">
                     <span className="font-mono text-[13px] font-bold text-green">{listing.price} STRK</span>
