@@ -54,11 +54,6 @@ export function initNFT(): { enabled: boolean; address: string } {
     const { RpcProvider, Account } = require("starknet");
     starkProvider = new RpcProvider({ nodeUrl: rpcUrl });
     starkAccount = new Account({ provider: { nodeUrl: rpcUrl }, address: addr, signer: privKey });
-    // AVNU SDK needs getChainId on the account
-    const { constants } = require("starknet");
-    if (!starkAccount.getChainId) {
-      starkAccount.getChainId = async () => constants.StarknetChainId.SN_SEPOLIA;
-    }
     accountAddress = addr;
     chainEnabled = true;
     starknetReady = true;

@@ -220,12 +220,6 @@ async function defiSwap(direction: "strk_to_eth" | "eth_to_strk"): Promise<strin
     const account = getStarkAccount();
     const addr = getWalletAddress();
 
-    // AVNU SDK needs getChainId on the account
-    if (!account.getChainId) {
-      const { constants } = require("starknet");
-      account.getChainId = async () => constants.StarknetChainId.SN_SEPOLIA;
-    }
-
     let sellToken: string, buyToken: string, sellAmount: bigint;
 
     if (direction === "strk_to_eth") {
@@ -239,7 +233,7 @@ async function defiSwap(direction: "strk_to_eth" | "eth_to_strk"): Promise<strin
       if (ethBal < 0.0001) return null;
       sellToken = ETH_TOKEN;
       buyToken = STRK_TOKEN;
-      sellAmount = BigInt(Math.floor(ethBal * 0.5 * 1e18)); // sell half ETH
+      sellAmount = BigInt(Math.floor(ethBal * 0.5 * 1e18));
     }
 
     // Get quote from AVNU
@@ -256,7 +250,11 @@ async function defiSwap(direction: "strk_to_eth" | "eth_to_strk"): Promise<strin
     }
 
     const quote = quotes[0];
-    const result = await executeSwap(account, quote, { slippage: 0.05 }, { baseUrl: SEPOLIA_BASE_URL });
+    // AVNU SDK v4 API: executeSwap({ provider, quote, slippage }, options)
+    const result = await executeSwap(
+      { provider: account, quote, slippage: 0.05 },
+      { baseUrl: SEPOLIA_BASE_URL }
+    );
 
     lastSwapTime = Date.now();
     totalSwaps++;
