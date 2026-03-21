@@ -21,6 +21,7 @@ import { getDoodleLog } from "./self-work";
 import { fetchBiologyNews, getNextTopic } from "./content-pipeline";
 import { chainTick, chainDeath } from "./chain";
 import { getListings } from "./nft";
+import { attestEvent } from "./tee";
 import type { NewsItem } from "./content-pipeline";
 import type { OrganismState, ActivityState } from "./organism-types";
 import { COSTS } from "./organism-types";
@@ -153,6 +154,7 @@ export class DigitalOrganism {
             this.state.tasksCompleted++;
             this.state.tokensUsed += completed.tokensUsed;
             emit("earn", `Task completed! Earned ${completed.reward} cr.`);
+            attestEvent("task", { taskId: task.id, type: task.type, reward: completed.reward, tokensUsed: completed.tokensUsed, balance: this.metabolism.getBalance() });
             emit("thought", getTaskReflection({
               taskType: task.type, reward: completed.reward,
               tokenCost: completed.costIncurred, success: true,
@@ -226,7 +228,10 @@ export class DigitalOrganism {
             );
             if (result) {
               console.log(`[ORGANISM] Self-work: ${result.type} — ${result.detail.slice(0, 60)}`);
-              if (result.type === "doodle") this.lastDoodleTitle = result.detail;
+              if (result.type === "doodle") {
+                this.lastDoodleTitle = result.detail;
+                attestEvent("doodle", { title: result.detail, balance: this.metabolism.getBalance() });
+              }
             }
           } catch {}
           this.working = false;
@@ -272,7 +277,8 @@ export class DigitalOrganism {
       emit("survival", line);
     }
 
-    // On-chain death certificate
+    // TEE-attested death + on-chain death certificate
+    attestEvent("death", { lifespan: parseFloat(lifespan.toFixed(0)), tasksCompleted: this.state.tasksCompleted, totalEarned: this.state.totalEarned, doodleCount: getDoodleLog().length });
     chainDeath().catch(() => {});
 
     console.log(`\n[ORGANISM] ████ DECEASED ████`);

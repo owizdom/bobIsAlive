@@ -13,6 +13,7 @@
 import { emit } from "./monologue";
 import { getStarkAccount, getStarkProvider, getWalletAddress, getWalletBalance } from "./nft";
 import type { Metabolism } from "./metabolism";
+import { attestEvent } from "./tee";
 
 // ── Token Addresses (Sepolia) ────────────────────────────────────────────────
 
@@ -84,6 +85,7 @@ async function chainHeartbeat(): Promise<string | null> {
     const hash = result.transaction_hash;
     pushTx("heartbeat", hash);
     emit("chain", `Heartbeat #${totalHeartbeats} on Starknet. Proof-of-life: ${hash.slice(0, 18)}...`);
+    attestEvent("heartbeat", { number: totalHeartbeats, txHash: hash });
     console.log(`[CHAIN] Heartbeat #${totalHeartbeats}: ${hash.slice(0, 18)}...`);
     return hash;
   } catch (err: any) {

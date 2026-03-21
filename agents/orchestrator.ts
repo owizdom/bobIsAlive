@@ -37,6 +37,7 @@ import { initNFT, isNFTEnabled, getWalletAddress, getWalletBalance, getListings,
 import { TASK_REWARDS } from "./organism-types";
 import { getNewsCache } from "./content-pipeline";
 import { initChain, getChainState } from "./chain";
+import { initTEE, getTEEState, getAttestationLog, attestEvent } from "./tee";
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -126,6 +127,10 @@ initResearch();
 
 // ── NFT / On-Chain ────────────────────────────────────────────────────────────
 const nftState = initNFT();
+
+// ── TEE Attestation ───────────────────────────────────────────────────────────
+const teeState = initTEE();
+attestEvent("birth", { balance: 100, timestamp: Date.now(), tee: teeState.active });
 
 // ── On-Chain Survival ─────────────────────────────────────────────────────────
 initChain();
@@ -261,8 +266,7 @@ app.get("/api/proof", (_req, res) => {
       totalSpent: organism.state.totalSpent,
     },
     tee: {
-      mode: teeMode,
-      instanceId: process.env.EIGENCOMPUTE_INSTANCE_ID || "local-dev",
+      ...getTEEState(),
       systemPromptHash: getSystemPromptHash(),
       modelProvider: getActiveLLMProvider(),
       modelName: getModelName(),
@@ -310,6 +314,16 @@ app.get("/api/news", (_req, res) => {
 // On-chain survival state
 app.get("/api/chain", (_req, res) => {
   res.json(getChainState());
+});
+
+// TEE attestation
+app.get("/api/tee", (_req, res) => {
+  res.json(getTEEState());
+});
+
+// TEE attestation log (all signed events)
+app.get("/api/tee/attestations", (_req, res) => {
+  res.json(getAttestationLog());
 });
 
 // ── NFT Marketplace ───────────────────────────────────────────────────────────
