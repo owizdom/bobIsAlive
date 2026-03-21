@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { Heartbeat, OrganismData, Task, Doodle, EarningsEntry } from '../types'
 
-const API = import.meta.env.VITE_API_URL || ''
+const API = ''
 
 export function useHeartbeat() {
   const [hb, setHb] = useState<Heartbeat | null>(null)

@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "http://34.34.19.128:3001/api/:path*" },
+    { "source": "/doodles/:path*", "destination": "http://34.34.19.128:3001/doodles/:path*" },
+    { "source": "/health", "destination": "http://34.34.19.128:3001/health" }
+  ]
+}

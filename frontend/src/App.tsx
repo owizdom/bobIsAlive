@@ -3,7 +3,7 @@ import { useHeartbeat, useOrganism, useTasks, useDoodles, useMonologue, submitTa
 import type { Heartbeat, Task, Doodle } from './types'
 import type { MonologueEntry } from './hooks/useOrganism'
 
-const API = import.meta.env.VITE_API_URL || ''
+const API = ''
 
 type View = 'brain' | 'gallery' | 'tasks' | 'chain'
 
