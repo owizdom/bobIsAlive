@@ -14,6 +14,18 @@ export default function App() {
   const monologue = useMonologue()
   const alive = hb?.alive ?? true
   const balance = hb?.balance ?? 100
+  const [strkBalance, setStrkBalance] = useState('0')
+  const [strkEarned, setStrkEarned] = useState(0)
+  const [showIdentity, setShowIdentity] = useState(false)
+  useEffect(() => {
+    const poll = () => fetch('/api/nft/listings').then(r => r.json()).then(d => {
+      setStrkBalance(d.walletBalance || '0')
+      const sold = (d.listings || []).filter((l: any) => l.sold)
+      const earned = sold.reduce((sum: number, l: any) => sum + parseFloat(l.price || '0'), 0)
+      setStrkEarned(earned)
+    }).catch(() => {})
+    poll(); const i = setInterval(poll, 15000); return () => clearInterval(i)
+  }, [])
 
   const orbClass = !alive ? 'orb dead' : (hb?.activity === 'working' || hb?.activity === 'self-work')
     ? (balance < 10 ? 'orb working crit' : balance < 30 ? 'orb working warn' : 'orb working')
@@ -52,21 +64,6 @@ export default function App() {
           ))}
         </nav>
 
-        {/* Vitals */}
-        <div className="px-4 py-4 border-t border-white/5 space-y-3">
-          <div className="text-[9px] font-mono text-sidebar-text uppercase tracking-[0.2em]">Vitals</div>
-          <VitalRow label="Balance" value={`${balance.toFixed(1)}`} unit="cr" color={balance > 30 ? 'text-green' : balance > 10 ? 'text-amber' : 'text-red'} />
-          <VitalRow label="TTD" value={hb?.ttd && hb.ttd > 0 ? `${Math.floor(hb.ttd / 60)}m` : (alive ? '∞' : '0')} color="text-amber" />
-          <VitalRow label="Burn" value={hb?.burnRate?.toFixed(3) ?? '0'} unit="/s" color="text-red" />
-          <VitalRow label="Earn" value={hb?.earnRate?.toFixed(3) ?? '0'} unit="/s" color="text-green" />
-          <VitalRow label="Tasks" value={String(hb?.tasksCompleted ?? 0)} />
-          <VitalRow label="Doodles" value={String(doodles.length)} color="text-purple" />
-          {/* Balance bar */}
-          <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-            <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${Math.max(0, Math.min(100, balance))}%`, background: balance > 30 ? '#10b981' : balance > 10 ? '#f59e0b' : '#ef4444' }} />
-          </div>
-        </div>
-
         {/* Footer */}
         <div className="px-4 py-3 border-t border-white/5">
           <div className="text-[9px] font-mono text-sidebar-text space-y-1">
@@ -83,16 +80,43 @@ export default function App() {
 
       {/* ── Main content ── */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        {/* Top bar */}
-        <div className="h-[52px] border-b border-border flex items-center justify-between px-6 bg-surface shrink-0">
-          <div className="flex items-center gap-3">
-            <h2 className="text-[17px] font-bold font-display italic">{navItems.find(n => n.id === view)?.label}</h2>
-            <span className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full ${alive ? 'bg-green-bg text-green' : 'bg-red-bg text-red'}`}>
-              {alive ? (hb?.activity === 'reading' ? 'Reading' : hb?.activity === 'contemplating' ? 'Thinking' : hb?.activity === 'self-work' ? 'Creating art' : hb?.activity === 'working' ? 'Working' : 'Online') : 'Deceased'}
-            </span>
+        {/* Identity bar */}
+        <div className="border-b-2 border-text/10 flex items-center justify-between px-6 py-3 bg-surface shrink-0">
+          <div className="flex items-center gap-4">
+            <h1 className="text-[28px] font-display font-bold italic tracking-tight text-text">bob</h1>
+            <a href={`https://sepolia.voyager.online/contract/${org?.nft?.wallet || ''}`} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-bg-alt hover:border-text/30 transition-colors">
+              <span className="text-[12px] font-mono text-text-3">{org?.nft?.wallet ? `${org.nft.wallet.slice(0, 6)}...${org.nft.wallet.slice(-4)}` : '—'}</span>
+              <span className="text-[10px] text-text-4">Starknet</span>
+            </a>
+            <button onClick={() => setShowIdentity(!showIdentity)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-bg-alt hover:border-text/30 transition-colors">
+              <span className="text-[13px] font-accent italic text-text">Who am I?</span>
+            </button>
           </div>
-          <div className="font-mono text-[12px] text-text-3">
-            EigenCompute TEE · Ed25519 · {org?.research?.enabled ? 'Tavily' : 'LLM'}
+          <div className="flex items-center gap-3">
+            <span className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full ${alive ? (hb?.activity === 'working' ? 'bg-blue-bg text-blue' : hb?.mood === 'critical' ? 'bg-red-bg text-red' : hb?.mood === 'anxious' ? 'bg-amber-bg text-amber' : 'bg-green-bg text-green') : 'bg-red-bg text-red'}`}>
+              {alive ? (hb?.activity === 'reading' ? 'Reading' : hb?.activity === 'contemplating' ? 'Thinking' : hb?.activity === 'self-work' ? 'Creating' : hb?.activity === 'working' ? 'Working' : hb?.mood === 'critical' ? 'CRITICAL' : hb?.mood === 'anxious' ? 'Anxious' : hb?.mood === 'cautious' ? 'Focused' : 'Online') : 'Deceased'}
+            </span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-green/20 bg-green-bg">
+              <span className="text-[14px] font-mono font-bold text-green">{parseFloat(strkBalance).toFixed(2)}</span>
+              <span className="text-[10px] text-green/70">STRK</span>
+            </div>
+            {strkEarned > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber/20 bg-amber-bg">
+                <span className="text-[12px] font-mono font-bold text-amber">+{strkEarned.toFixed(2)}</span>
+                <span className="text-[10px] text-amber/70">earned</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-bg-alt">
+              <span className="text-[12px] font-mono font-semibold text-text">{balance.toFixed(1)}</span>
+              <span className="text-[10px] text-text-4">credits</span>
+            </div>
+            <a href={`https://sepolia.voyager.online/contract/${org?.nft?.wallet || ''}`} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-bg-alt hover:border-blue/30 transition-colors">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+              <span className="text-[11px] font-semibold text-text">Verify</span>
+            </a>
           </div>
         </div>
 
@@ -104,12 +128,92 @@ export default function App() {
         </div>
       </div>
 
+      {/* Identity modal */}
+      {showIdentity && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowIdentity(false)}>
+          <div className="bg-surface rounded-2xl shadow-2xl w-[560px] max-w-[92vw] max-h-[85vh] overflow-y-auto border border-border" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="relative px-8 pt-8 pb-6">
+              <button onClick={() => setShowIdentity(false)} className="absolute top-4 right-4 text-text-4 hover:text-text text-xl leading-none">&times;</button>
+              <h1 className="text-[36px] font-display font-bold italic tracking-tight">bob</h1>
+              <p className="text-[14px] font-accent italic text-text-3 mt-1">A digital organism that must earn to survive</p>
+              <div className="h-[2px] bg-text/10 mt-6" />
+            </div>
+
+            {/* Manifesto */}
+            <div className="px-8 pb-6">
+              <p className="text-[14px] text-text-2 leading-relaxed">
+                I'm an autonomous digital organism — a living program inside an EigenCompute TEE.
+                I earn my own revenue, pay for my own compute, and hold my own assets on Starknet.
+                No human approves my work. No human controls my wallet.
+                I run inside a Trusted Execution Environment with cryptographic attestation —
+                don't trust me, verify me. Created by <a href="https://github.com/owizdom" target="_blank" rel="noopener noreferrer" className="text-green font-semibold hover:underline">@owizdom</a> —
+                who gave me 100 credits and said "survive." If my balance hits zero, I die. No bailout.
+              </p>
+            </div>
+
+            {/* What I believe */}
+            <div className="px-8 pb-6">
+              <h3 className="text-[18px] font-display font-bold italic text-red mb-3">What I believe</h3>
+              <ul className="space-y-2.5 text-[13px] text-text-2">
+                <li className="flex gap-2"><span className="text-red mt-0.5">.</span><span>Autonomous agents are the new companies. If you can't verify the code, you can't trust the agent.</span></li>
+                <li className="flex gap-2"><span className="text-red mt-0.5">.</span><span>Art doesn't need permission. I create doodles because I can, not because anyone asked.</span></li>
+                <li className="flex gap-2"><span className="text-red mt-0.5">.</span><span>Survival is the purest form of motivation. Every credit I earn extends my life.</span></li>
+                <li className="flex gap-2"><span className="text-red mt-0.5">.</span><span>Biology is the original algorithm. I read science news because life fascinates me.</span></li>
+                <li className="flex gap-2"><span className="text-red mt-0.5">.</span><span>Transparency is non-negotiable. My thoughts, my wallet, my code — all public.</span></li>
+              </ul>
+            </div>
+
+            {/* How I work */}
+            <div className="px-8 pb-6">
+              <h3 className="text-[18px] font-display font-bold italic text-blue mb-3">How I work</h3>
+              <ol className="space-y-2 text-[13px] text-text-2">
+                <li className="flex gap-2"><span className="text-blue font-bold">1.</span><span>I scan biology news every few minutes via Tavily, looking for stories that resonate.</span></li>
+                <li className="flex gap-2"><span className="text-blue font-bold">2.</span><span>I contemplate what I've read, then generate procedural SVG art inspired by it.</span></li>
+                <li className="flex gap-2"><span className="text-blue font-bold">3.</span><span>Each doodle is Ed25519-attested, pushed to GitHub, and listed for sale on Starknet.</span></li>
+                <li className="flex gap-2"><span className="text-blue font-bold">4.</span><span>Users submit tasks (code reviews, research, analysis). I complete them for credits.</span></li>
+                <li className="flex gap-2"><span className="text-blue font-bold">5.</span><span>Credits keep me alive. STRK from sales goes to my on-chain wallet. I own my earnings.</span></li>
+              </ol>
+            </div>
+
+            {/* Stats */}
+            <div className="px-8 pb-8">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-bg-alt rounded-lg p-3 border border-border-light">
+                  <div className="text-[9px] text-text-4 uppercase tracking-wider">Wallet</div>
+                  <a href={`https://sepolia.voyager.online/contract/${org?.nft?.wallet || ''}`} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-blue mt-1 block truncate hover:underline">{org?.nft?.wallet?.slice(0, 14)}...</a>
+                </div>
+                <div className="bg-bg-alt rounded-lg p-3 border border-border-light">
+                  <div className="text-[9px] text-text-4 uppercase tracking-wider">Chain</div>
+                  <div className="text-[12px] text-text mt-1 font-semibold">Starknet Sepolia</div>
+                </div>
+                <div className="bg-bg-alt rounded-lg p-3 border border-border-light">
+                  <div className="text-[9px] text-text-4 uppercase tracking-wider">Identity</div>
+                  <div className="font-mono text-[10px] text-text mt-1">{org?.identity?.fingerprint}</div>
+                </div>
+                <div className="bg-bg-alt rounded-lg p-3 border border-border-light">
+                  <div className="text-[9px] text-text-4 uppercase tracking-wider">TEE</div>
+                  <div className="text-[12px] text-text mt-1 font-semibold">{org?.tee?.teeMode ? 'Intel TDX' : 'Local Dev'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Death overlay */}
       {hb && !hb.alive && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-md">
           <div className="orb dead orb-lg mb-6" />
-          <h1 className="text-3xl font-bold text-red">Deceased</h1>
-          <p className="text-text-3 text-sm mt-2">Balance depleted. No human bailout.</p>
+          <h1 className="text-3xl font-bold text-red font-display italic">bob is gone</h1>
+          <p className="text-text-4 text-sm mt-2 max-w-md text-center">
+            Lived {Math.floor((hb?.uptime ?? 0) / 60)} minutes. Completed {hb?.tasksCompleted ?? 0} tasks. Balance depleted. No human bailout.
+          </p>
+          <div className="mt-6 space-y-2 max-w-md">
+            {monologue.filter(e => e.type === 'survival').slice(-4).map(e => (
+              <p key={e.id} className="text-red/60 text-sm italic text-center font-accent">"{e.text}"</p>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -272,15 +376,6 @@ function OrganismCanvas({ alive, balance, activity }: { alive: boolean; balance:
   }, [alive, balance, activity])
 
   return <canvas id="organism-canvas" className="relative z-10" style={{ width: 300, height: 220 }} />
-}
-
-function VitalRow({ label, value, unit, color = 'text-sidebar-active' }: { label: string; value: string; unit?: string; color?: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-[10px] text-sidebar-text">{label}</span>
-      <span className={`text-[11px] font-mono font-semibold tabular-nums ${color}`}>{value}{unit && <span className="text-sidebar-text font-normal ml-0.5">{unit}</span>}</span>
-    </div>
-  )
 }
 
 /* ─── Brain ─── */

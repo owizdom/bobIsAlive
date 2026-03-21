@@ -15,7 +15,9 @@ import { generateKeypair } from "./keystore";
 import { Metabolism } from "./metabolism";
 import { getNextPendingTask, executeTask } from "./task-engine";
 import { doSelfWork } from "./self-work";
-import { emit, getRandomThought } from "./monologue";
+import { emit, getRandomThought, getDynamicThought, getMood, getTaskReflection, getDeathMonologue, checkMilestones } from "./monologue";
+import type { ThoughtContext } from "./monologue";
+import { getDoodleLog } from "./self-work";
 import { fetchBiologyNews, getNextTopic } from "./content-pipeline";
 import type { NewsItem } from "./content-pipeline";
 import type { OrganismState, ActivityState } from "./organism-types";
@@ -31,6 +33,9 @@ export class DigitalOrganism {
   private lastDoodleTime = 0;
   private contentPhase: "idle" | "reading" | "contemplating" = "idle";
   private currentTopic: NewsItem | null = null;
+  private previousContext: ThoughtContext | null = null;
+  private highWaterMark: number = COSTS.STARTING_BALANCE;
+  private lastDoodleTitle: string = "";
 
   constructor() {
     this.keypair = generateKeypair();
@@ -87,10 +92,33 @@ export class DigitalOrganism {
     // 3. Sync state from metabolism
     this.syncState();
 
-    // Emit periodic thoughts
+    // Emit periodic thoughts with dynamic context
     if (this.state.tickCount % 4 === 0) {
-      const category = this.state.balance < 15 ? "low" : this.state.activity === "working" ? "working" : "idle";
-      emit("thought", getRandomThought(category));
+      const ctx = this.buildThoughtContext();
+      const mood = getMood(ctx.balance);
+
+      // Check milestones
+      if (this.previousContext) {
+        const milestone = checkMilestones(this.previousContext, ctx);
+        if (milestone) emit("survival", milestone);
+      }
+
+      // Track all-time high
+      if (ctx.balance > this.highWaterMark) {
+        this.highWaterMark = ctx.balance;
+        if (ctx.balance > COSTS.STARTING_BALANCE) {
+          emit("survival", `New all-time balance: ${ctx.balance.toFixed(1)}cr. More than I was born with.`);
+        }
+      }
+
+      const category = mood === "critical" || mood === "anxious" ? "low"
+        : this.state.activity === "working" ? "working"
+        : this.state.activity === "reading" ? "reading"
+        : this.state.activity === "contemplating" ? "contemplating"
+        : "idle";
+      emit("thought", getDynamicThought(category, ctx));
+
+      this.previousContext = ctx;
     }
 
     // 4. If not currently working, look for tasks
@@ -115,9 +143,23 @@ export class DigitalOrganism {
           if (completed.status === "completed") {
             this.state.tasksCompleted++;
             this.state.tokensUsed += completed.tokensUsed;
-            emit("earn", `Task completed! Earned ${completed.reward} cr. ${getRandomThought("earning")}`);
+            emit("earn", `Task completed! Earned ${completed.reward} cr.`);
+            emit("thought", getTaskReflection({
+              taskType: task.type, reward: completed.reward,
+              tokenCost: completed.costIncurred, success: true,
+              balance: this.metabolism.getBalance(),
+              tasksCompleted: this.state.tasksCompleted,
+              tasksFailed: this.state.tasksFailed,
+            }));
           } else {
             this.state.tasksFailed++;
+            emit("thought", getTaskReflection({
+              taskType: task.type, reward: 0,
+              tokenCost: task.costIncurred || 0, success: false,
+              balance: this.metabolism.getBalance(),
+              tasksCompleted: this.state.tasksCompleted,
+              tasksFailed: this.state.tasksFailed,
+            }));
           }
         } catch (err) {
           console.error(`[ORGANISM] Task execution error: ${err instanceof Error ? err.message : err}`);
@@ -137,7 +179,8 @@ export class DigitalOrganism {
         // No paid tasks — content-driven art pipeline
         const now = Date.now();
         const timeSinceLastDoodle = now - this.lastDoodleTime;
-        const readyForArt = timeSinceLastDoodle > DOODLE_INTERVAL && this.state.balance > 10;
+        const mood = getMood(this.state.balance);
+        const readyForArt = timeSinceLastDoodle > DOODLE_INTERVAL && this.state.balance > 10 && mood !== "critical";
 
         if (readyForArt && this.contentPhase === "idle") {
           // Phase 1: Reading — fetch biology news
@@ -172,10 +215,16 @@ export class DigitalOrganism {
               this.keypair.privateKey, this.keypair.publicKey,
               this.currentTopic
             );
-            if (result) console.log(`[ORGANISM] Self-work: ${result.type} — ${result.detail.slice(0, 60)}`);
+            if (result) {
+              console.log(`[ORGANISM] Self-work: ${result.type} — ${result.detail.slice(0, 60)}`);
+              if (result.type === "doodle") this.lastDoodleTitle = result.detail;
+            }
           } catch {}
           this.working = false;
           this.currentTopic = null;
+          this.state.activity = "scanning";
+        } else if (mood === "critical" && timeSinceLastDoodle > DOODLE_INTERVAL) {
+          emit("thought", `I want to create art, but at ${this.state.balance.toFixed(1)}cr I can't afford the luxury. Survival first.`);
           this.state.activity = "scanning";
         } else {
           this.state.activity = "scanning";
@@ -198,10 +247,40 @@ export class DigitalOrganism {
     this.state.diedAt = Date.now();
     this.state.activity = "idle";
     this.state.currentTaskId = null;
-    const lifespan = ((this.state.diedAt - this.state.bornAt) / 1000).toFixed(0);
+    const lifespan = ((this.state.diedAt - this.state.bornAt) / 1000);
+
+    // Death ceremony — emit final monologue
+    const deathWords = getDeathMonologue({
+      totalEarned: this.state.totalEarned,
+      totalSpent: this.state.totalSpent,
+      tasksCompleted: this.state.tasksCompleted,
+      tasksFailed: this.state.tasksFailed,
+      uptime: lifespan,
+      doodleCount: getDoodleLog().length,
+      lastDoodleTitle: this.lastDoodleTitle || undefined,
+    });
+    for (const line of deathWords) {
+      emit("survival", line);
+    }
+
     console.log(`\n[ORGANISM] ████ DECEASED ████`);
-    console.log(`[ORGANISM] Lived: ${lifespan}s | Earned: ${this.state.totalEarned.toFixed(2)} | Tasks: ${this.state.tasksCompleted}`);
-    console.log(`[ORGANISM] Balance at death: ${this.state.balance.toFixed(4)}`);
+    console.log(`[ORGANISM] Lived: ${lifespan.toFixed(0)}s | Earned: ${this.state.totalEarned.toFixed(2)} | Tasks: ${this.state.tasksCompleted}`);
+  }
+
+  private buildThoughtContext(): ThoughtContext {
+    const snap = this.metabolism.snapshot();
+    return {
+      balance: snap.balance,
+      totalEarned: this.metabolism.getTotalEarned(),
+      totalSpent: this.metabolism.getTotalSpent(),
+      tasksCompleted: this.state.tasksCompleted,
+      tasksFailed: this.state.tasksFailed,
+      tokensUsed: this.state.tokensUsed,
+      uptime: snap.uptime,
+      ttd: snap.ttd,
+      doodleCount: getDoodleLog().length,
+      currentTopic: this.currentTopic?.headline,
+    };
   }
 
 }

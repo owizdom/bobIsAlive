@@ -21,6 +21,7 @@ import fs from "fs";
 import { DigitalOrganism } from "./organism";
 import { submitTask, getAllTasks, getCompletedTasks, initLLMClient } from "./task-engine";
 import { initThinker, getSystemPromptHash, getModelName, getActiveLLMProvider } from "./thinker";
+import { getMood } from "./monologue";
 import { initResearch, isSearchEnabled } from "./research";
 import { buildAttestation } from "./keystore";
 import type { LLMConfig, TaskType } from "./organism-types";
@@ -216,6 +217,7 @@ app.get("/api/heartbeat", (_req, res) => {
     currentTaskId: organism.state.currentTaskId,
     tasksCompleted: organism.state.tasksCompleted,
     tickCount: snap.tickCount,
+    mood: getMood(snap.balance),
   });
 });
 

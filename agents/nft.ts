@@ -53,7 +53,7 @@ export function initNFT(): { enabled: boolean; address: string } {
   try {
     const { RpcProvider, Account } = require("starknet");
     starkProvider = new RpcProvider({ nodeUrl: rpcUrl });
-    starkAccount = new Account(starkProvider, addr, privKey);
+    starkAccount = new Account({ provider: { nodeUrl: rpcUrl }, address: addr, signer: privKey });
     accountAddress = addr;
     chainEnabled = true;
     starknetReady = true;

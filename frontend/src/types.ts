@@ -10,6 +10,7 @@ export interface Heartbeat {
   currentTaskId: string | null
   tasksCompleted: number
   tickCount: number
+  mood?: string
 }
 
 export interface OrganismData {
@@ -28,6 +29,7 @@ export interface OrganismData {
   metabolism: { efficiency: number }
   tee: { teeMode: boolean; instanceId: string }
   research: { enabled: boolean }
+  nft: { enabled: boolean; wallet: string; chain: string }
   llm: { provider: string; model: string }
 }
 
