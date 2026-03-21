@@ -23,7 +23,6 @@ if (!process.env.EIGENCOMPUTE_INSTANCE_ID && fs.existsSync(KMS_KEY_PATH)) {
 import express from "express";
 import cors from "cors";
 import path from "path";
-import fs from "fs";
 
 import { DigitalOrganism } from "./organism";
 import { submitTask, getAllTasks, getCompletedTasks, initLLMClient } from "./task-engine";
