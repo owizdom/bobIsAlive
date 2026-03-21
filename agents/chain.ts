@@ -220,6 +220,12 @@ async function defiSwap(direction: "strk_to_eth" | "eth_to_strk"): Promise<strin
     const account = getStarkAccount();
     const addr = getWalletAddress();
 
+    // AVNU SDK needs getChainId on the account
+    if (!account.getChainId) {
+      const { constants } = require("starknet");
+      account.getChainId = async () => constants.StarknetChainId.SN_SEPOLIA;
+    }
+
     let sellToken: string, buyToken: string, sellAmount: bigint;
 
     if (direction === "strk_to_eth") {
