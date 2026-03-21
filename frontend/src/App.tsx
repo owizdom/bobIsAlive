@@ -3,6 +3,8 @@ import { useHeartbeat, useOrganism, useTasks, useDoodles, useMonologue, submitTa
 import type { Heartbeat, Task, Doodle } from './types'
 import type { MonologueEntry } from './hooks/useOrganism'
 
+const API = import.meta.env.VITE_API_URL || ''
+
 type View = 'brain' | 'gallery' | 'tasks' | 'chain'
 
 export default function App() {
@@ -18,7 +20,7 @@ export default function App() {
   const [strkEarned, setStrkEarned] = useState(0)
   const [showIdentity, setShowIdentity] = useState(false)
   useEffect(() => {
-    const poll = () => fetch('/api/nft/listings').then(r => r.json()).then(d => {
+    const poll = () => fetch(`${API}/api/nft/listings`).then(r => r.json()).then(d => {
       setStrkBalance(d.walletBalance || '0')
       const sold = (d.listings || []).filter((l: any) => l.sold)
       const earned = sold.reduce((sum: number, l: any) => sum + parseFloat(l.price || '0'), 0)
@@ -196,7 +198,7 @@ export default function App() {
                 </div>
                 <div className="bg-bg-alt rounded-lg p-3 border border-border-light">
                   <div className="text-[9px] text-text-4 uppercase tracking-wider">TEE</div>
-                  <div className="text-[12px] text-text mt-1 font-semibold">{org?.tee?.teeMode ? 'Intel TDX' : 'Local Dev'}</div>
+                  <a href="https://verify-sepolia.eigencloud.xyz/app/0xeE4d468A50E1B693CC34C96c9518Ee5cB7920E7F" target="_blank" rel="noopener noreferrer" className="text-[12px] text-green mt-1 font-semibold hover:underline">EigenCompute TEE</a>
                 </div>
               </div>
             </div>
@@ -637,7 +639,7 @@ function GalleryView({ doodles }: { doodles: Doodle[] }) {
   const [purchaseResult, setPurchaseResult] = useState<{
     title: string; filename: string; price: string; txHash: string; creditsEarned: number; buyer: string
   } | null>(null)
-  const pollListings = () => fetch('/api/nft/listings').then(r => r.json()).then(d => setListings(d.listings || [])).catch(() => {})
+  const pollListings = () => fetch(`${API}/api/nft/listings`).then(r => r.json()).then(d => setListings(d.listings || [])).catch(() => {})
   useEffect(() => { pollListings(); const i = setInterval(pollListings, 8000); return () => clearInterval(i) }, [])
 
   const handleBuy = async (tokenId: number, priceStrk: string, title: string, filename: string) => {
@@ -653,7 +655,7 @@ function GalleryView({ doodles }: { doodles: Doodle[] }) {
         policies: [{ target: sepoliaTokens.STRK.address, method: 'transfer' }],
       })
 
-      const orgData = await fetch('/api/organism').then(r => r.json())
+      const orgData = await fetch(`${API}/api/organism`).then(r => r.json())
       const bobWallet = orgData.nft?.wallet
 
       if (!bobWallet) { alert('Organism wallet not configured'); setBuying(null); return }
@@ -664,7 +666,7 @@ function GalleryView({ doodles }: { doodles: Doodle[] }) {
       await tx.wait()
 
       const connectedAddr = wallet.address || 'unknown'
-      const r = await fetch('/api/nft/buy', {
+      const r = await fetch(`${API}/api/nft/buy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tokenId, buyerAddress: connectedAddr, txHash: tx.hash }),
@@ -781,8 +783,8 @@ function ChainView({ strkBalance }: { strkBalance: string }) {
 
   useEffect(() => {
     const poll = () => {
-      fetch('/api/chain').then(r => r.json()).then(setChain).catch(() => {})
-      fetch('/api/nft/listings').then(r => r.json()).then(d => {
+      fetch(`${API}/api/chain`).then(r => r.json()).then(setChain).catch(() => {})
+      fetch(`${API}/api/nft/listings`).then(r => r.json()).then(d => {
         const txs = (d.listings || []).filter((l: any) => l.mintTxHash).map((l: any) => ({
           type: l.sold ? 'nft-sold' : 'nft-mint', hash: l.mintTxHash, timestamp: l.listedAt,
           detail: `"${l.title}" ${l.sold ? `sold for ${l.price} STRK` : `listed for ${l.price} STRK`}`,
