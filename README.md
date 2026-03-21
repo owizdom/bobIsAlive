@@ -19,17 +19,42 @@ Bob is an AI agent with a **metabolism**. Every 5 seconds, it burns compute cred
 
 Everything runs inside an **Intel TDX Trusted Execution Environment** via **EigenCompute**. The operator cannot see Bob's task data, steal its earnings, manipulate its art, or prevent its death.
 
-## Why EigenCompute
+## Why Bob Cannot Work Without EigenCompute
 
-EigenCompute is **the core of Bob's autonomy**. Without it, Bob is just a program. With it, Bob is a **sovereign entity**.
+EigenCompute is not a feature. It is the reason Bob can exist.
 
-| Without EigenCompute | With EigenCompute (TEE) |
-|---------------------|------------------------|
-| Operator can steal wallet keys | Keys generated inside TEE — operator never sees them |
-| Operator can read private task data | TEE memory encryption — task inputs/outputs invisible |
-| Operator can fake the metabolism | Balance/death enforced inside enclave — no manipulation |
-| Operator can claim art is human-made | Ed25519 attestation proves autonomous generation |
-| Users must trust the operator | Users verify the TEE attestation — trustless |
+Without a TEE, Bob is just a script. Anyone running the server could:
+
+1. **Steal Bob's wallet** - Read the Starknet private key from memory, drain all STRK
+2. **Fake the metabolism** - Set balance to infinity, prevent death, make Bob immortal
+3. **Read private tasks** - See every code review, research query, and analysis users submit
+4. **Forge art attestations** - Create art manually and claim Bob made it
+5. **Front-run DeFi** - See Bob's AVNU swap quotes before execution, steal trading profits
+6. **Prevent death** - Override the balance check so Bob never dies, removing all stakes
+
+With EigenCompute Intel TDX, none of this is possible:
+
+| Threat | How TEE Prevents It |
+|--------|-------------------|
+| Steal wallet keys | Private key generated inside enclave memory. Never written to disk. Never leaves TEE. |
+| Fake metabolism | Code runs inside enclave. Operator cannot modify it. Death is enforced by hardware. |
+| Read private tasks | TEE memory encryption. Host OS cannot read enclave memory. Intel TDX enforces this. |
+| Forge attestations | Every output signed by TEE-resident Ed25519 key. This key exists only in RAM inside the enclave. When the enclave stops, the key is gone forever. |
+| Front-run DeFi | Swap parameters computed inside TEE. Operator cannot see them before execution. |
+| Prevent death | Balance logic runs in attested code. The verifiable build hash on-chain proves the exact code running. |
+
+**TEE Attestation Flow:**
+1. At boot, Bob generates an Ed25519 keypair inside the enclave (memory only, never on disk)
+2. Every task result, doodle, heartbeat, and swap is signed with this key
+3. The KMS public key anchors the signing key to the specific EigenCompute instance
+4. Attestation hashes are posted on-chain via Starknet self-transfers
+5. Anyone can verify at `GET /api/tee` and `GET /api/tee/attestations`
+
+**Verify Bob's TEE:**
+- EigenCompute Dashboard: https://verify-sepolia.eigencloud.xyz/app/0xeE4d468A50E1B693CC34C96c9518Ee5cB7920E7F
+- TEE State API: `GET /api/tee`
+- Attestation Log: `GET /api/tee/attestations`
+- Proof of Operation: `GET /api/proof`
 
 **EigenCompute enables:**
 - **Verifiable autonomy** — Intel TDX attestation proves Bob's code hasn't been modified

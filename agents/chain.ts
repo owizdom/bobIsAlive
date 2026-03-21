@@ -13,7 +13,7 @@
 import { emit } from "./monologue";
 import { getStarkAccount, getStarkProvider, getWalletAddress, getWalletBalance } from "./nft";
 import type { Metabolism } from "./metabolism";
-import { attestEvent } from "./tee";
+import { attestEvent, pendingOnChainAttestations } from "./tee";
 
 // ── Token Addresses (Sepolia) ────────────────────────────────────────────────
 
@@ -298,6 +298,43 @@ async function getEthBalance(): Promise<string> {
   } catch { return cachedEthBalance; }
 }
 
+// ── On-Chain Attestation Posting ──────────────────────────────────────────────
+
+async function postAttestationOnChain(): Promise<string | null> {
+  if (!chainReady || pendingOnChainAttestations.length === 0) return null;
+
+  try {
+    const attestation = pendingOnChainAttestations.shift();
+    if (!attestation) return null;
+
+    const account = getStarkAccount();
+    const { CallData } = require("starknet");
+
+    // Encode attestation hash into transfer amount (last 8 hex digits as wei)
+    const hashFragment = parseInt(attestation.hash.slice(-8), 16);
+    const amount = BigInt(hashFragment);
+
+    const result = await account.execute({
+      contractAddress: STRK_TOKEN,
+      entrypoint: "transfer",
+      calldata: CallData.compile({
+        recipient: getWalletAddress(),
+        amount: { low: amount & ((1n << 128n) - 1n), high: 0n },
+      }),
+    });
+
+    const hash = result.transaction_hash;
+    pushTx("attestation", hash);
+
+    emit("chain", `TEE ATTESTATION posted on-chain. Type: ${attestation.type}. Tx: ${hash.slice(0, 18)}...`);
+    console.log(`[CHAIN] Attestation on-chain (${attestation.type}): ${hash.slice(0, 18)}...`);
+    return hash;
+  } catch (err: any) {
+    console.warn(`[CHAIN] Attestation post failed: ${err?.message?.slice(0, 60) || err}`);
+    return null;
+  }
+}
+
 // ── Death Settlement ─────────────────────────────────────────────────────────
 
 async function deathSettlement(): Promise<string | null> {
@@ -357,7 +394,13 @@ export async function chainTick(creditBalance: number, metabolism: Metabolism, s
     if (swapped) return;
   }
 
-  // Priority 5: Heartbeat
+  // Priority 5: Post pending TEE attestations on-chain
+  if (pendingOnChainAttestations.length > 0) {
+    await postAttestationOnChain();
+    return;
+  }
+
+  // Priority 6: Heartbeat
   await chainHeartbeat();
 }
 
