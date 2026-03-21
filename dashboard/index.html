@@ -1,1750 +1,395 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Swarm Mind</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Digital Organism</title>
   <style>
-    :root {
-      --bg:       #f4f9ff;
-      --bg-soft:  #ffffff;
-      --surface:  #ffffff;
-      --card:     #ffffff;
-      --border:   #c6d9ff;
-      --border2:  #dceaff;
-      --text:     #08142a;
-      --muted:    #33456d;
-      --muted2:   #526592;
-      --green:    #0cbb76;
-      --green-d:  #0a9c63;
-      --red:      #ff4d61;
-      --red-d:    #e1374d;
-      --yellow:   #ffbf00;
-      --yellow-d: #d89b00;
-      --blue:     #1f73ff;
-      --purple:   #8b45ff;
-      --cyan:     #00a8ff;
-      --orange:   #ff9f1c;
-      --info:     #2a80ed;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    html { font-size: 15px; }
-
-    body {
-      background:
-        radial-gradient(circle at top left, #fafdff 0%, #edf5ff 30%, #e4eeff 65%, #dceaff 100%);
-      color: var(--text);
-      font-family: "Avenir Next", "Segoe UI", "Trebuchet MS", Arial, sans-serif;
-      line-height: 1.5;
-      min-height: 100vh;
-    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{width:100%;height:100%;background:#030508;color:#e0ecff;font-family:'SF Mono','Fira Code','Cascadia Code',monospace;overflow-x:hidden}
 
     /* ── Layout ── */
-    .shell {
-      display: grid;
-      grid-template-rows: auto 1fr;
-      min-height: 100vh;
-    }
-
-    .topbar {
-      background: linear-gradient(90deg, #0c3fa0 0%, #1a75ff 100%);
-      border-bottom: 1px solid var(--border);
-      padding: 0 24px;
-      height: 64px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-
-    .logo {
-      font-size: 1rem;
-      font-weight: 700;
-      color: #ffffff;
-      letter-spacing: -0.02em;
-      flex-shrink: 0;
-    }
-
-    .logo span { color: #6fffb3; }
-
-    .subtitle {
-      margin-left: 8px;
-      font-size: 0.78rem;
-      color: #d6e2ff;
-      letter-spacing: 0.02em;
-      font-weight: 500;
-    }
-
-    .topbar-nav {
-      flex: 1;
-    }
-
-    .topbar-meta {
-      margin-right: auto;
-      margin-left: 10px;
-      color: #d6e2ff;
-      font-size: 0.74rem;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      font-weight: 600;
-    }
-
-    .topbar-status {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
-    }
-
-    .status-dot {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 10px rgba(10, 155, 101, 0.55);
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-
-    .status-text { font-size: 0.75rem; color: #ffffff; font-weight: 600; }
-
-    .main {
-      padding: 20px 24px 32px;
-      max-width: 1400px;
-      margin: 0 auto;
-      width: 100%;
-    }
-
-    /* ── Views ── */
-    .systems-strip {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-
-    .metric-card {
-      background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px 14px;
-      box-shadow: 0 10px 26px rgba(19, 44, 125, 0.06);
-    }
-
-    .metric-card.tone-ok { box-shadow: 0 10px 22px rgba(10, 155, 101, 0.12); border-color: rgba(10, 155, 101, 0.45); }
-    .metric-card.tone-warn { box-shadow: 0 10px 22px rgba(217, 161, 10, 0.12); border-color: rgba(217, 161, 10, 0.45); }
-    .metric-card.tone-bad { box-shadow: 0 10px 22px rgba(230, 69, 83, 0.12); border-color: rgba(230, 69, 83, 0.45); }
-
-    .metric-label {
-      font-size: 0.66rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .metric-value {
-      font-size: 1.04rem;
-      font-weight: 700;
-      line-height: 1.2;
-      color: var(--text);
-    }
-
-    .metric-subtle {
-      margin-top: 2px;
-      font-size: 0.76rem;
-      color: var(--muted);
-    }
-
-    .metric-tile {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .metric-pill {
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      padding: 4px 9px;
-      font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 0.03em;
-      text-transform: uppercase;
-      color: var(--text);
-      white-space: nowrap;
-    }
-
-    .metric-pill.ok    { background: rgba(10,155,101,0.12); color: var(--green); }
-    .metric-pill.warn  { background: rgba(217,161,10,0.16); color: var(--yellow); }
-    .metric-pill.bad   { background: rgba(230,69,83,0.16); color: var(--red); }
-
-    .judge-brief {
-      background: linear-gradient(135deg, #0b4ad1 0%, #1688ff 70%);
-      color: #ffffff;
-      border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.35);
-      padding: 14px 16px;
-      margin-bottom: 14px;
-      box-shadow: 0 12px 34px rgba(15, 50, 140, 0.2);
-    }
-
-    .judge-brief-title {
-      font-size: 0.74rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      opacity: 0.9;
-      margin-bottom: 8px;
-    }
-
-    .judge-brief-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .judge-brief-item {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.17);
-      border-radius: 8px;
-      padding: 8px 10px;
-    }
-
-    .judge-brief-label {
-      font-size: 0.66rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      opacity: 0.85;
-      margin-bottom: 4px;
-    }
-
-    .judge-brief-value {
-      font-size: 0.94rem;
-      font-weight: 700;
-      line-height: 1.25;
-      word-break: break-word;
-    }
-
-    .judge-brief-story {
-      font-size: 0.84rem;
-      color: #eef5ff;
-      line-height: 1.45;
-    }
-
-    /* ── Hero Oracle Answer ── */
-    .oracle-hero {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 28px 32px;
-      margin-bottom: 16px;
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 24px;
-      align-items: center;
-    }
-
-    .oracle-answer-block {
-      text-align: center;
-    }
-
-    .answer-label {
-      font-size: 0.7rem;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 4px;
-    }
-
-    .answer-value {
-      font-size: 3.2rem;
-      font-weight: 900;
-      letter-spacing: -0.02em;
-      line-height: 1;
-      transition: color 0.4s;
-    }
-
-    .answer-value.YES    { color: var(--green); text-shadow: 0 0 40px rgba(0,232,122,0.3); }
-    .answer-value.NO     { color: var(--red);   text-shadow: 0 0 40px rgba(255,51,85,0.3); }
-    .answer-value.UNCERTAIN { color: var(--yellow); text-shadow: 0 0 40px rgba(255,204,0,0.3); }
-
-    .oracle-center {
-      min-width: 0;
-    }
-
-    .oracle-question {
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: var(--text);
-      line-height: 1.4;
-      margin-bottom: 12px;
-    }
-
-    .oracle-link {
-      color: var(--blue);
-      text-decoration: underline;
-    }
-
-    .oracle-meta {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-    }
-
-    .oracle-meta-item {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .oracle-meta-label {
-      font-size: 0.68rem;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .oracle-meta-value {
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .conf-bar-wrap {
-      margin-top: 10px;
-      height: 4px;
-      background: var(--border2);
-      border-radius: 2px;
-      overflow: hidden;
-    }
-
-    .conf-bar {
-      height: 100%;
-      background: var(--green);
-      border-radius: 2px;
-      transition: width 0.6s ease;
-    }
-
-    .votes-block {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-
-    .vote-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.8rem;
-    }
-
-    .vote-label { color: var(--muted); width: 70px; text-transform: uppercase; letter-spacing: 0.06em; }
-    .vote-bar-wrap { width: 80px; height: 6px; background: var(--border2); border-radius: 3px; overflow: hidden; }
-    .vote-bar { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
-    .vote-bar.yes  { background: var(--green); }
-    .vote-bar.no   { background: var(--red); }
-    .vote-bar.unc  { background: var(--yellow); }
-    .vote-num { color: var(--text); font-weight: 700; width: 14px; }
-
-    /* ── Phase Banner ── */
-    .phase-banner {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px 24px;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 24px;
-    }
-
-    .phase-steps {
-      display: flex;
-      gap: 0;
-      flex: 1;
-      position: relative;
-    }
-
-    .phase-step {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      position: relative;
-    }
-
-    .phase-step::after {
-      content: '';
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      width: 100%;
-      height: 2px;
-      background: var(--border2);
-      z-index: 0;
-    }
-
-    .phase-step:last-child::after { display: none; }
-
-    .phase-dot {
-      width: 20px; height: 20px;
-      border-radius: 50%;
-      border: 2px solid var(--border2);
-      background: var(--card);
-      z-index: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.65rem;
-      font-weight: 700;
-      transition: all 0.3s;
-    }
-
-    .phase-dot.done  { background: var(--green); border-color: var(--green); color: #000; }
-    .phase-dot.active { border-color: var(--yellow); box-shadow: 0 0 10px rgba(255,204,0,0.5); color: var(--yellow); animation: phase-pulse 1.5s infinite; }
-
-    @keyframes phase-pulse {
-      0%, 100% { box-shadow: 0 0 8px rgba(255,204,0,0.5); }
-      50% { box-shadow: 0 0 16px rgba(255,204,0,0.8); }
-    }
-
-    .phase-name {
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-    }
-
-    .phase-name.active { color: var(--yellow); }
-    .phase-name.done   { color: var(--green); }
-
-    .phase-info {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      flex-shrink: 0;
-      gap: 2px;
-    }
-
-    .phase-cycle {
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
-
-    .phase-timer {
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: var(--text);
-      font-variant-numeric: tabular-nums;
-    }
-
-    /* ── Agent Row ── */
-    .agent-row {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .agent-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
-      position: relative;
-      overflow: hidden;
-      transition: border-color 0.3s;
-    }
-
-    .agent-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 3px;
-    }
-
-    .agent-card.nakamoto::before { background: var(--blue); }
-    .agent-card.szabo::before    { background: var(--purple); }
-    .agent-card.finney::before   { background: var(--cyan); }
-
-    .agent-card.active-agent { border-color: var(--border2); }
-
-    .agent-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      margin-bottom: 10px;
-    }
-
-    .agent-name {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .agent-spec {
-      font-size: 0.72rem;
-      color: var(--muted);
-      margin-top: 1px;
-    }
-
-    .agent-phase-badge {
-      font-size: 0.65rem;
-      padding: 2px 7px;
-      border-radius: 3px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      font-weight: 700;
-    }
-
-    .badge-explore  { background: rgba(51,136,255,0.15); color: var(--blue); border: 1px solid rgba(51,136,255,0.3); }
-    .badge-commit   { background: rgba(153,68,255,0.15); color: var(--purple); border: 1px solid rgba(153,68,255,0.3); }
-    .badge-reveal   { background: rgba(0,204,255,0.15); color: var(--cyan); border: 1px solid rgba(0,204,255,0.3); }
-    .badge-synthesis{ background: rgba(255,136,0,0.15); color: var(--orange); border: 1px solid rgba(255,136,0,0.3); }
-
-    .agent-prediction {
-      font-size: 0.8rem;
-      color: var(--text);
-      line-height: 1.4;
-      margin-bottom: 8px;
-      min-height: 36px;
-    }
-
-    .agent-question {
-      font-size: 0.66rem;
-      color: var(--muted2);
-      line-height: 1.35;
-      margin-bottom: 8px;
-      max-height: 60px;
-      overflow: hidden;
-      border-top: 1px dashed var(--border2);
-      padding-top: 7px;
-    }
-
-    .agent-confidence {
-      font-size: 0.66rem;
-      font-weight: 700;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .agent-prediction.bullish { color: var(--green); }
-    .agent-prediction.bearish { color: var(--red); }
-    .agent-prediction.neutral { color: var(--muted); }
-
-    .agent-stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 4px;
-    }
-
-    .agent-stat {
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
-    }
-
-    .agent-stat-label {
-      font-size: 0.6rem;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .agent-stat-value {
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .commit-hash {
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px solid var(--border);
-      font-size: 0.68rem;
-      color: var(--muted);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .commit-hash.has-hash {
-      color: var(--green);
-    }
-
-    /* ── Two-column lower grid ── */
-    .lower-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    /* ── Panels ── */
-    .panel {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      display: flex;
-      flex-direction: column;
-      min-height: 340px;
-    }
-
-    .panel-full {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      display: flex;
-      flex-direction: column;
-      min-height: 260px;
-      margin-bottom: 12px;
-    }
-
-    .panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-
-    .panel-title {
-      font-size: 0.72rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      font-weight: 700;
-    }
-
-    .panel-count {
-      font-size: 0.68rem;
-      color: var(--muted2);
-    }
-
-    .panel-body {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px;
-    }
-
-    /* scrollbar */
-    .panel-body::-webkit-scrollbar { width: 4px; }
-    .panel-body::-webkit-scrollbar-track { background: transparent; }
-    .panel-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-
-    /* ── Feed Items ── */
-    .feed-item {
-      padding: 10px 8px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .feed-item:last-child { border-bottom: none; }
-
-    .feed-agent {
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 3px;
-    }
-
-    .feed-agent.nakamoto { color: var(--blue); }
-    .feed-agent.szabo    { color: var(--purple); }
-    .feed-agent.finney   { color: var(--cyan); }
-    .feed-agent.unknown  { color: var(--muted); }
-
-    .feed-text {
-      font-size: 0.82rem;
-      color: var(--text);
-      line-height: 1.45;
-    }
-
-    .feed-meta {
-      font-size: 0.68rem;
-      color: var(--muted);
-      margin-top: 4px;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .feed-tag {
-      background: var(--border);
-      padding: 1px 6px;
-      border-radius: 3px;
-      font-size: 0.63rem;
-      color: var(--muted);
-    }
-
-    .pheromone-strength {
-      display: inline-block;
-      width: 40px;
-      height: 4px;
-      background: var(--border2);
-      border-radius: 2px;
-      vertical-align: middle;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .pheromone-strength-fill {
-      position: absolute;
-      top: 0; left: 0; bottom: 0;
-      background: var(--cyan);
-      border-radius: 2px;
-    }
-
-    /* ── TEE Proof Layers ── */
-    .tee-intro {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 20px 24px;
-      margin-bottom: 12px;
-    }
-
-    .tee-intro-title {
-      font-size: 0.72rem;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--muted);
-      font-weight: 700;
-      margin-bottom: 14px;
-    }
-
-    .tee-layers {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-    }
-
-    .tee-layer {
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      border-radius: 6px;
-      padding: 14px;
-    }
-
-    .tee-layer-num {
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      margin-bottom: 4px;
-    }
-
-    .tee-layer-title {
-      font-size: 0.88rem;
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 4px;
-    }
-
-    .tee-layer.l1 .tee-layer-title { color: var(--blue); }
-    .tee-layer.l2 .tee-layer-title { color: var(--purple); }
-    .tee-layer.l3 .tee-layer-title { color: var(--green); }
-
-    .tee-layer-method {
-      font-size: 0.72rem;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .tee-layer-claim {
-      font-size: 0.76rem;
-      color: var(--text);
-      line-height: 1.4;
-    }
-
-    /* ── Agent TEE Attestation Cards ── */
-    .attest-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-
-    .attest-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    .attest-card-header {
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .attest-agent-name {
-      font-size: 0.88rem;
-      font-weight: 700;
-    }
-
-    .attest-card.nakamoto .attest-agent-name { color: var(--blue); }
-    .attest-card.szabo    .attest-agent-name { color: var(--purple); }
-    .attest-card.finney   .attest-agent-name { color: var(--cyan); }
-
-    .tee-badge {
-      font-size: 0.58rem;
-      padding: 2px 7px;
-      border-radius: 3px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
-
-    .tee-badge.active {
-      background: rgba(0,232,122,0.12);
-      color: var(--green);
-      border: 1px solid rgba(0,232,122,0.3);
-    }
-
-    .tee-badge.local {
-      background: rgba(255,204,0,0.1);
-      color: var(--yellow);
-      border: 1px solid rgba(255,204,0,0.3);
-    }
-
-    .attest-body {
-      padding: 12px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 7px;
-    }
-
-    .attest-row {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .attest-row-label {
-      font-size: 0.6rem;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-    }
-
-    .attest-row-value {
-      font-size: 0.7rem;
-      color: var(--text);
-      word-break: break-all;
-      line-height: 1.4;
-    }
-
-    .attest-row-value.hash {
-      color: var(--green);
-      font-family: ui-monospace, monospace;
-    }
-
-    .attest-row-value.model {
-      color: var(--cyan);
-    }
-
-    .attest-row-value.warn {
-      color: var(--yellow);
-    }
-
-    /* ── Evidence Panel ── */
-    .evidence-grid {
-      display: grid;
-      gap: 8px;
-      padding: 12px;
-    }
-
-    .evidence-check {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 10px 12px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-    }
-
-    .evidence-icon {
-      font-size: 0.9rem;
-      flex-shrink: 0;
-      margin-top: 1px;
-    }
-
-    .evidence-check-label {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .evidence-check-detail {
-      font-size: 0.72rem;
-      color: var(--muted);
-      margin-top: 2px;
-      word-break: break-all;
-    }
-
-    .check-pass  { border-color: rgba(0,232,122,0.2); }
-    .check-warn  { border-color: rgba(255,204,0,0.2); }
-    .check-fail  { border-color: rgba(255,51,85,0.2); }
-    .check-info  { border-color: var(--border); }
-
-    /* ── Full raw JSON panel ── */
-    .raw-json {
-      font-size: 0.72rem;
-      color: #7a9ec0;
-      white-space: pre-wrap;
-      word-break: break-word;
-      padding: 12px;
-      max-height: 400px;
-      overflow-y: auto;
-      line-height: 1.6;
-    }
-
-    .raw-json::-webkit-scrollbar { width: 4px; }
-    .raw-json::-webkit-scrollbar-thumb { background: var(--border2); }
-
-    /* ── Agents tab ── */
-    .agents-full-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-    }
-
-    .agent-full-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    .agent-full-header {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .agent-full-name {
-      font-size: 1rem;
-      font-weight: 700;
-    }
-
-    .agent-full-body {
-      padding: 14px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.78rem;
-      padding: 6px 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .stat-row:last-child { border-bottom: none; }
-    .stat-row-label { color: var(--muted); }
-    .stat-row-value { color: var(--text); font-weight: 600; text-align: right; max-width: 60%; word-break: break-all; }
-
-    .personality-bars { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
-    .pbar-row { display: flex; align-items: center; gap: 8px; }
-    .pbar-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; width: 72px; flex-shrink: 0; letter-spacing: 0.04em; }
-    .pbar-track { flex: 1; height: 5px; background: var(--border2); border-radius: 3px; overflow: hidden; }
-    .pbar-fill { height: 100%; border-radius: 3px; background: var(--blue); }
-    .pbar-fill.nakamoto-bar { background: var(--blue); }
-    .pbar-fill.szabo-bar    { background: var(--purple); }
-    .pbar-fill.finney-bar   { background: var(--cyan); }
-    .pbar-val { font-size: 0.65rem; color: var(--muted); width: 28px; text-align: right; }
-
-    /* ── Collective ── */
-    .collective-report {
-      padding: 16px;
-    }
-
-    .report-field {
-      margin-bottom: 16px;
-    }
-
-    .report-field-label {
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      margin-bottom: 4px;
-    }
-
-    .report-field-value {
-      font-size: 0.85rem;
-      color: var(--text);
-      line-height: 1.5;
-    }
-
-    .signal-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .signal-list li {
-      font-size: 0.82rem;
-      color: var(--text);
-      padding: 5px 8px;
-      background: var(--surface);
-      border-left: 2px solid var(--green);
-      border-radius: 0 4px 4px 0;
-    }
-
-    .answer-badge {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 4px;
-      font-weight: 700;
-      font-size: 0.95rem;
-    }
-
-    .answer-badge.YES    { background: rgba(0,232,122,0.12); color: var(--green); border: 1px solid rgba(0,232,122,0.3); }
-    .answer-badge.NO     { background: rgba(255,51,85,0.12); color: var(--red); border: 1px solid rgba(255,51,85,0.3); }
-    .answer-badge.UNCERTAIN { background: rgba(255,204,0,0.12); color: var(--yellow); border: 1px solid rgba(255,204,0,0.3); }
-
-    /* ── Empty state ── */
-    .empty {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      min-height: 80px;
-      color: var(--muted2);
-      font-size: 0.78rem;
-    }
-
-    /* ── Responsive ── */
-    @media (max-width: 960px) {
-      .systems-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .agent-row, .agents-full-grid { grid-template-columns: 1fr; }
-      .lower-grid { grid-template-columns: 1fr; }
-      .oracle-hero { grid-template-columns: 1fr; }
-      .votes-block { flex-direction: row; }
-      .tee-layers, .attest-grid { grid-template-columns: 1fr; }
-    }
-
-    @media (max-width: 620px) {
-      .main { padding: 16px 12px 22px; }
-      .subtitle { display: none; }
-      .systems-strip { grid-template-columns: 1fr; }
-      .topbar { gap: 8px; }
-      .topbar-nav { overflow-x: auto; flex: 0; }
-    }
+    .shell{display:grid;grid-template-rows:auto 1fr auto;height:100vh}
+
+    /* ── Header ── */
+    .header{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(3,5,8,0.95)}
+    .logo{font-size:14px;font-weight:800;letter-spacing:3px;color:#0cbb76;text-shadow:0 0 20px rgba(12,187,118,0.4)}
+    .status-bar{display:flex;align-items:center;gap:16px}
+    .status-pill{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase}
+    .status-pill .dot{width:8px;height:8px;border-radius:50%;animation:pulse-dot 1.5s infinite}
+    .status-pill.alive .dot{background:#0cbb76;box-shadow:0 0 12px #0cbb76}
+    .status-pill.dead .dot{background:#ff4d61;box-shadow:none;animation:none}
+    .uptime{font-size:10px;color:#556}
+    .balance-display{font-size:13px;font-weight:700;letter-spacing:1px}
+
+    /* ── Balance Bar ── */
+    .balance-bar-wrap{width:100%;height:4px;background:rgba(255,255,255,0.05);position:relative}
+    .balance-bar-fill{height:100%;transition:width 1s ease,background .5s;border-radius:0 2px 2px 0}
+
+    /* ── Main Grid ── */
+    .main{display:grid;grid-template-columns:300px 1fr 260px;gap:0;overflow:hidden}
+
+    /* ── Left: Task Panel ── */
+    .task-panel{border-right:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;overflow:hidden}
+    .panel-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#556;padding:12px 16px 8px;border-bottom:1px solid rgba(255,255,255,0.04)}
+    .task-form{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.04)}
+    .task-form select,.task-form textarea,.task-form button{width:100%;font-family:inherit;font-size:11px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(15,21,40,0.6);color:#e0ecff;outline:none}
+    .task-form select{padding:8px;margin-bottom:6px}
+    .task-form textarea{padding:8px;height:70px;resize:vertical;margin-bottom:6px}
+    .task-form button{background:linear-gradient(135deg,#0cbb76,#0a9060);color:#000;font-weight:700;border:none;padding:9px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:all .2s}
+    .task-form button:hover{transform:scale(1.02);box-shadow:0 0 15px rgba(12,187,118,0.3)}
+    .task-form button:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+    .task-list{flex:1;overflow-y:auto;padding:8px}
+    .task-item{background:rgba(15,21,40,0.4);border:1px solid rgba(255,255,255,0.04);border-radius:6px;padding:8px 10px;margin-bottom:6px;font-size:10px}
+    .task-item .task-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+    .task-item .task-type{font-weight:700;text-transform:uppercase;letter-spacing:1px}
+    .task-item .task-type.review{color:#ff8c00}
+    .task-item .task-type.research{color:#1f73ff}
+    .task-item .task-type.summarize{color:#a855f7}
+    .task-item .task-type.analyze{color:#ffbf00}
+    .task-item .task-status{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600}
+    .task-item .task-status.pending{background:rgba(255,191,0,0.15);color:#ffbf00}
+    .task-item .task-status.working{background:rgba(31,115,255,0.15);color:#1f73ff}
+    .task-item .task-status.completed{background:rgba(12,187,118,0.15);color:#0cbb76}
+    .task-item .task-status.failed{background:rgba(255,77,97,0.15);color:#ff4d61}
+    .task-item .task-input{color:#8899aa;margin-top:2px;line-height:1.4}
+    .task-item .task-result{color:#b0c0d8;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.04);line-height:1.5;max-height:100px;overflow-y:auto}
+    .task-item .task-reward{font-size:9px;color:#0cbb76;margin-top:3px}
+
+    /* ── Center: Organism Core ── */
+    .organism-core{display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}
+    .orb-container{position:relative;width:200px;height:200px;display:flex;align-items:center;justify-content:center}
+    .orb{width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 40% 40%,#15ff9a,#0cbb76,#064a30);box-shadow:0 0 60px rgba(12,187,118,0.3),0 0 120px rgba(12,187,118,0.1),inset 0 0 30px rgba(255,255,255,0.1);animation:heartbeat 1.5s ease-in-out infinite;transition:all 1s}
+    .orb.working{animation-duration:0.8s;box-shadow:0 0 80px rgba(12,187,118,0.5),0 0 160px rgba(12,187,118,0.2),inset 0 0 30px rgba(255,255,255,0.15)}
+    .orb.warning{background:radial-gradient(circle at 40% 40%,#ffdd44,#ffbf00,#8a6500);box-shadow:0 0 60px rgba(255,191,0,0.3),0 0 120px rgba(255,191,0,0.1),inset 0 0 30px rgba(255,255,255,0.1)}
+    .orb.critical{background:radial-gradient(circle at 40% 40%,#ff6666,#ff4d61,#8a1020);box-shadow:0 0 60px rgba(255,77,97,0.3),0 0 120px rgba(255,77,97,0.1),inset 0 0 30px rgba(255,255,255,0.1);animation-duration:0.5s}
+    .orb.dead{background:radial-gradient(circle at 40% 40%,#333,#222,#111);box-shadow:0 0 20px rgba(100,100,100,0.1);animation:none}
+    .orb-ring{position:absolute;width:160px;height:160px;border-radius:50%;border:1px solid rgba(12,187,118,0.15);animation:spin 20s linear infinite}
+    .orb-ring2{position:absolute;width:190px;height:190px;border-radius:50%;border:1px dashed rgba(12,187,118,0.08);animation:spin 35s linear infinite reverse}
+    .orb-label{margin-top:16px;text-align:center}
+    .orb-label .activity{font-size:11px;font-weight:600;color:#556;text-transform:uppercase;letter-spacing:1.5px}
+    .orb-label .task-info{font-size:10px;color:#445;margin-top:4px;max-width:250px}
+
+    /* ── Death overlay ── */
+    .death-overlay{position:absolute;inset:0;background:rgba(3,5,8,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.8s}
+    .death-overlay.visible{opacity:1;pointer-events:auto}
+    .death-overlay .death-text{font-size:28px;font-weight:900;letter-spacing:6px;color:#ff4d61;text-shadow:0 0 30px rgba(255,77,97,0.4)}
+    .death-overlay .death-sub{font-size:11px;color:#556;margin-top:8px}
+
+    /* ── Right: Metabolism Panel ── */
+    .metabolism-panel{border-left:1px solid rgba(255,255,255,0.05);padding:16px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+    .metric{display:flex;flex-direction:column;gap:2px}
+    .metric-label{font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#445}
+    .metric-value{font-size:16px;font-weight:700;letter-spacing:1px}
+    .metric-value.green{color:#0cbb76}
+    .metric-value.red{color:#ff4d61}
+    .metric-value.gold{color:#ffbf00}
+    .metric-value.white{color:#e0ecff}
+    .metric-sub{font-size:9px;color:#334}
+
+    .ttd-bar{width:100%;height:6px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;margin-top:4px}
+    .ttd-bar-fill{height:100%;border-radius:3px;transition:width 1s ease,background .5s}
+
+    /* ── Footer: Attestation ── */
+    .footer{display:flex;align-items:center;justify-content:center;gap:16px;padding:8px 24px;border-top:1px solid rgba(255,255,255,0.05);background:rgba(3,5,8,0.95)}
+    .badge{display:flex;align-items:center;gap:5px;font-size:9px;color:#0cbb76;font-weight:600;letter-spacing:1px}
+    .badge .dot{width:5px;height:5px;border-radius:50%;background:#0cbb76;box-shadow:0 0 6px #0cbb76;animation:pulse-dot 2s infinite}
+    .badge.warn{color:#ffbf00}
+    .badge.warn .dot{background:#ffbf00;box-shadow:0 0 6px #ffbf00}
+
+    @keyframes heartbeat{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+    @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.3}}
+    @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+    @media(max-width:800px){.main{grid-template-columns:1fr}.task-panel,.metabolism-panel{display:none}}
   </style>
 </head>
 <body>
+
 <div class="shell">
-    <header class="topbar">
-      <div class="logo">SWARM<span>MIND</span></div>
-      <div class="subtitle">Autonomous Oracle Dashboard</div>
-      <div class="topbar-meta">Live Questions, Agents, Oracle & Health</div>
-      <div class="topbar-status">
-        <div class="status-dot" id="conn-dot"></div>
-        <span class="status-text" id="conn-label">connecting…</span>
+  <!-- Header -->
+  <div>
+    <div class="header">
+      <div class="logo">DIGITAL ORGANISM</div>
+      <div class="status-bar">
+        <div class="status-pill alive" id="status-pill"><span class="dot"></span><span id="status-text">ALIVE</span></div>
+        <div class="uptime" id="uptime">0s</div>
+        <div class="balance-display" id="balance-display">100.0 cr</div>
       </div>
-    </header>
+    </div>
+    <div class="balance-bar-wrap"><div class="balance-bar-fill" id="balance-bar" style="width:100%;background:#0cbb76"></div></div>
+  </div>
 
-  <main class="main">
-
-    <!-- ── OVERVIEW ── -->
-    <section id="overview" class="view active">
-
-      <div class="judge-brief">
-        <div class="judge-brief-title">Judge Interpretation Panel</div>
-        <div class="judge-brief-grid">
-          <div class="judge-brief-item">
-            <div class="judge-brief-label">Current cycle status</div>
-            <div class="judge-brief-value" id="judge-cycle">Waiting for first cycle</div>
-          </div>
-          <div class="judge-brief-item">
-            <div class="judge-brief-label">Oracle direction</div>
-            <div class="judge-brief-value" id="judge-answer">Pending</div>
-          </div>
-          <div class="judge-brief-item">
-            <div class="judge-brief-label">Confidence</div>
-            <div class="judge-brief-value" id="judge-confidence">—</div>
-          </div>
-        </div>
-        <div class="judge-brief-story" id="judge-narrative">
-          Waiting for live telemetry from agents, coordinator and evidence feed.
-        </div>
+  <!-- Main -->
+  <div class="main">
+    <!-- Left: Tasks -->
+    <div class="task-panel">
+      <div class="panel-title">Submit Task</div>
+      <div class="task-form">
+        <select id="task-type">
+          <option value="review">Code Review (+5 cr)</option>
+          <option value="research">Research (+8 cr)</option>
+          <option value="summarize">Summarize (+3 cr)</option>
+          <option value="analyze">Analyze (+6 cr)</option>
+        </select>
+        <textarea id="task-input" placeholder="Paste code, ask a question, or submit text..."></textarea>
+        <button id="task-btn" onclick="submitTask()">SUBMIT TASK</button>
       </div>
+      <div class="panel-title">Task Queue</div>
+      <div class="task-list" id="task-list"></div>
+    </div>
 
-      <!-- Oracle Hero -->
-      <div class="oracle-hero">
-        <div class="oracle-answer-block">
-          <div class="answer-label">Oracle</div>
-          <div class="answer-value UNCERTAIN" id="hero-answer">—</div>
-        </div>
-        <div class="oracle-center">
-          <div class="oracle-question" id="hero-question">Waiting for first cycle…</div>
-          <div class="oracle-meta">
-            <div class="oracle-meta-item">
-              <span class="oracle-meta-label">Confidence</span>
-              <span class="oracle-meta-value" id="hero-conf">—</span>
-            </div>
-            <div class="oracle-meta-item">
-              <span class="oracle-meta-label">Direction</span>
-              <span class="oracle-meta-value" id="hero-dir">—</span>
-            </div>
-            <div class="oracle-meta-item">
-              <span class="oracle-meta-label">Agents</span>
-              <span class="oracle-meta-value" id="hero-agents">3</span>
-            </div>
-            <div class="oracle-meta-item">
-              <span class="oracle-meta-label">Signal</span>
-              <span class="oracle-meta-value" id="hero-ticker">—</span>
-            </div>
-          </div>
-          <div class="conf-bar-wrap" style="margin-top:12px;">
-            <div class="conf-bar" id="hero-conf-bar" style="width:0%"></div>
-          </div>
-        </div>
-        <div class="votes-block">
-          <div class="vote-row">
-            <span class="vote-label">Bullish</span>
-            <div class="vote-bar-wrap"><div class="vote-bar yes" id="vote-yes" style="width:0%"></div></div>
-            <span class="vote-num" id="vote-yes-n">0</span>
-          </div>
-          <div class="vote-row">
-            <span class="vote-label">Bearish</span>
-            <div class="vote-bar-wrap"><div class="vote-bar no" id="vote-no" style="width:0%"></div></div>
-            <span class="vote-num" id="vote-no-n">0</span>
-          </div>
-          <div class="vote-row">
-            <span class="vote-label">Neutral</span>
-            <div class="vote-bar-wrap"><div class="vote-bar unc" id="vote-unc" style="width:0%"></div></div>
-            <span class="vote-num" id="vote-unc-n">0</span>
-          </div>
-        </div>
+    <!-- Center: Organism -->
+    <div class="organism-core">
+      <div class="orb-container">
+        <div class="orb-ring"></div>
+        <div class="orb-ring2"></div>
+        <div class="orb" id="orb"></div>
       </div>
-
-      <!-- Phase Banner -->
-      <div class="phase-banner">
-        <div class="phase-steps" id="phase-steps">
-          <div class="phase-step" id="ps-explore">
-            <div class="phase-dot" id="pd-explore">1</div>
-            <div class="phase-name" id="pn-explore">Explore</div>
-          </div>
-          <div class="phase-step" id="ps-commit">
-            <div class="phase-dot" id="pd-commit">2</div>
-            <div class="phase-name" id="pn-commit">Commit</div>
-          </div>
-          <div class="phase-step" id="ps-reveal">
-            <div class="phase-dot" id="pd-reveal">3</div>
-            <div class="phase-name" id="pn-reveal">Reveal</div>
-          </div>
-          <div class="phase-step" id="ps-synthesis">
-            <div class="phase-dot" id="pd-synthesis">4</div>
-            <div class="phase-name" id="pn-synthesis">Synthesis</div>
-          </div>
-        </div>
-        <div class="phase-info">
-          <span class="phase-cycle" id="phase-cycle">Cycle —</span>
-          <span class="phase-timer" id="phase-timer">—</span>
-        </div>
+      <div class="orb-label">
+        <div class="activity" id="activity">INITIALIZING</div>
+        <div class="task-info" id="task-info"></div>
       </div>
-
-      <!-- System Snapshot -->
-      <div class="systems-strip">
-        <div class="metric-card">
-          <div class="metric-label">Cycle State</div>
-          <div class="metric-tile">
-            <div>
-              <div class="metric-value" id="sys-cycle">Cycle 0</div>
-              <div class="metric-subtle" id="sys-phase">phase: —</div>
-            </div>
-            <span class="metric-pill" id="sys-status">initializing</span>
-          </div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Autonomy Safety</div>
-          <div class="metric-value" id="sys-autonomy">—</div>
-          <div class="metric-subtle" id="sys-autonomy-sub">restarts: 0 · last step: —</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">LLM Provider</div>
-          <div class="metric-value" id="sys-llm">eigenai</div>
-          <div class="metric-subtle" id="sys-llm-usage">daily usage: 0/0</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Health</div>
-          <div class="metric-value" id="sys-health">good</div>
-          <div class="metric-subtle" id="sys-health-sub">confidence signal and failures</div>
-        </div>
+      <div class="death-overlay" id="death-overlay">
+        <div class="death-text">DECEASED</div>
+        <div class="death-sub" id="death-sub">Balance depleted. No human bailout.</div>
       </div>
+    </div>
 
-      <!-- Agent Cards -->
-      <div class="agent-row">
-        <div class="agent-card nakamoto" id="ac-nakamoto">
-          <div class="agent-header">
-            <div>
-              <div class="agent-name">Nakamoto</div>
-              <div class="agent-spec">Technical Analyst</div>
-            </div>
-            <div class="agent-phase-badge badge-explore" id="ab-nakamoto">explore</div>
-          </div>
-          <div class="agent-prediction" id="ap-nakamoto">Analyzing chart patterns…</div>
-          <div class="agent-confidence" id="apc-nakamoto">Confidence: pending</div>
-          <div class="agent-question" id="aq-nakamoto">Waiting for active Polymarket thesis.</div>
-          <div class="agent-stats">
-            <div class="agent-stat">
-              <span class="agent-stat-label">Tokens</span>
-              <span class="agent-stat-value" id="at-nakamoto">—</span>
-            </div>
-            <div class="agent-stat">
-              <span class="agent-stat-label">Step</span>
-              <span class="agent-stat-value" id="as-nakamoto">—</span>
-            </div>
-          </div>
-          <div class="commit-hash" id="ah-nakamoto">no commitment yet</div>
-        </div>
-        <div class="agent-card szabo" id="ac-szabo">
-          <div class="agent-header">
-            <div>
-              <div class="agent-name">Szabo</div>
-              <div class="agent-spec">Macro Analyst</div>
-            </div>
-            <div class="agent-phase-badge badge-explore" id="ab-szabo">explore</div>
-          </div>
-          <div class="agent-prediction" id="ap-szabo">Reading macro signals…</div>
-          <div class="agent-confidence" id="apc-szabo">Confidence: pending</div>
-          <div class="agent-question" id="aq-szabo">Waiting for active Polymarket thesis.</div>
-          <div class="agent-stats">
-            <div class="agent-stat">
-              <span class="agent-stat-label">Tokens</span>
-              <span class="agent-stat-value" id="at-szabo">—</span>
-            </div>
-            <div class="agent-stat">
-              <span class="agent-stat-label">Step</span>
-              <span class="agent-stat-value" id="as-szabo">—</span>
-            </div>
-          </div>
-          <div class="commit-hash" id="ah-szabo">no commitment yet</div>
-        </div>
-        <div class="agent-card finney" id="ac-finney">
-          <div class="agent-header">
-            <div>
-              <div class="agent-name">Finney</div>
-              <div class="agent-spec">On-chain Analyst</div>
-            </div>
-            <div class="agent-phase-badge badge-explore" id="ab-finney">explore</div>
-          </div>
-          <div class="agent-prediction" id="ap-finney">Scanning on-chain flows…</div>
-          <div class="agent-confidence" id="apc-finney">Confidence: pending</div>
-          <div class="agent-question" id="aq-finney">Waiting for active Polymarket thesis.</div>
-          <div class="agent-stats">
-            <div class="agent-stat">
-              <span class="agent-stat-label">Tokens</span>
-              <span class="agent-stat-value" id="at-finney">—</span>
-            </div>
-            <div class="agent-stat">
-              <span class="agent-stat-label">Step</span>
-              <span class="agent-stat-value" id="as-finney">—</span>
-            </div>
-          </div>
-          <div class="commit-hash" id="ah-finney">no commitment yet</div>
-        </div>
+    <!-- Right: Metabolism -->
+    <div class="metabolism-panel">
+      <div class="panel-title">Metabolism</div>
+      <div class="metric">
+        <div class="metric-label">Balance</div>
+        <div class="metric-value green" id="m-balance">100.0</div>
+        <div class="metric-sub">credits</div>
       </div>
-
-      <!-- Lower: Thoughts + Pheromones -->
-      <div class="panel-full">
-        <div class="panel-header">
-          <span class="panel-title">Polymarket Truth Terminal</span>
-          <span class="panel-count" id="truth-count">0 active predictions</span>
-        </div>
-        <div class="panel-body" id="truth-terminal"></div>
+      <div class="metric">
+        <div class="metric-label">Time to Death</div>
+        <div class="metric-value gold" id="m-ttd">--</div>
+        <div class="ttd-bar"><div class="ttd-bar-fill" id="ttd-bar" style="width:100%;background:#0cbb76"></div></div>
       </div>
-
-      <div class="lower-grid">
-        <div class="panel">
-          <div class="panel-header">
-            <span class="panel-title">Live Thoughts</span>
-            <span class="panel-count" id="thoughts-count">0</span>
-          </div>
-          <div class="panel-body" id="thoughts-feed"></div>
-        </div>
-        <div class="panel">
-          <div class="panel-header">
-            <span class="panel-title">Live Questions</span>
-            <span class="panel-count" id="question-count">0</span>
-          </div>
-          <div class="panel-body" id="questions-feed"></div>
-        </div>
+      <div class="metric">
+        <div class="metric-label">Burn Rate</div>
+        <div class="metric-value red" id="m-burn">0.000</div>
+        <div class="metric-sub">cr/sec</div>
       </div>
-    </section>
+      <div class="metric">
+        <div class="metric-label">Earn Rate</div>
+        <div class="metric-value green" id="m-earn">0.000</div>
+        <div class="metric-sub">cr/sec</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Net Rate</div>
+        <div class="metric-value white" id="m-net">0.000</div>
+        <div class="metric-sub">cr/sec</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Tasks Completed</div>
+        <div class="metric-value white" id="m-tasks">0</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Total Earned</div>
+        <div class="metric-value green" id="m-earned">0.00</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Total Spent</div>
+        <div class="metric-value red" id="m-spent">0.00</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Efficiency</div>
+        <div class="metric-value gold" id="m-eff">0%</div>
+      </div>
+      <div class="panel-title" style="margin-top:8px">Identity</div>
+      <div class="metric">
+        <div class="metric-label">Fingerprint</div>
+        <div class="metric-value white" id="m-fp" style="font-size:11px">--</div>
+      </div>
+    </div>
+  </div>
 
-  </main>
+  <!-- Footer -->
+  <div class="footer">
+    <div class="badge" id="badge-tee"><span class="dot"></span>TEE Attestation</div>
+    <div class="badge" id="badge-ed25519"><span class="dot"></span>Ed25519 Signatures</div>
+    <div class="badge" id="badge-research"><span class="dot"></span>Web Research</div>
+    <div class="badge" id="badge-llm"><span class="dot"></span>LLM: --</div>
+  </div>
 </div>
 
 <script>
-  const API = window.location.origin;
-  const get = async (path, fallback = null) => {
-    try {
-      const r = await fetch(`${API}${path}`, { cache: "no-store" });
-      if (!r.ok) return fallback;
-      return await r.json();
-    } catch { return fallback; }
-  };
+// ── State ──
+let hb = null; // heartbeat data
+let tasks = [];
 
-  const el = id => document.getElementById(id);
-  const setText = (id, v) => { const e = el(id); if (e) e.textContent = v ?? "—"; };
-  const fmt  = n => `${(Math.max(0, Math.min(1, +n||0)) * 100).toFixed(1)}%`;
-  const pct  = n => `${(Math.max(0, Math.min(1, +n||0)) * 100).toFixed(0)}%`;
-  const ago  = ms => { const s = Math.floor((Date.now()-ms)/1000); return s<60?`${s}s ago`:s<3600?`${Math.floor(s/60)}m ago`:`${Math.floor(s/3600)}h ago`; };
-  const safeNum = (v, f = "0") => (v === undefined || v === null || v === "" ? f : String(v));
-  const toneCard = (id, tone) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const card = el.closest(".metric-card, .agent-card, .phase-timer, .answer-value, .answer-badge");
-    if (card && card.classList) {
-      card.classList.remove("tone-ok", "tone-warn", "tone-bad");
-      if (tone) card.classList.add(`tone-${tone}`);
-    }
-    if (el.classList) {
-      el.classList.remove("ok", "warn", "bad");
-      if (tone) el.classList.add(tone);
-    }
-    if (id.startsWith("sys-")) {
-      const cardRoot = document.querySelector(`#${id}`).closest(".metric-card");
-      if (cardRoot) {
-        cardRoot.classList.remove("tone-ok", "tone-warn", "tone-bad");
-        if (tone) cardRoot.classList.add(`tone-${tone}`);
-      }
-    }
-  };
-
-  const setMetric = (id, value, tone = "ok") => {
-    setText(id, value);
-    if (id.startsWith("sys-") || id.includes("pill") || id.includes("status")) toneCard(id, tone);
-  };
-
-  const styleForTone = tone => tone === "warn" ? "metric-pill warn" : tone === "bad" ? "metric-pill bad" : "metric-pill ok";
-  const setPill = (id, text, tone = "ok") => {
-    const n = el(id);
-    if (!n) return;
-    n.className = styleForTone(tone);
-    n.textContent = text;
-  };
-
-  const agentKey = name => {
-    const n = String(name||"").toLowerCase();
-    if (n.includes("nakamoto") || n.includes("nak")) return "nakamoto";
-    if (n.includes("szabo") || n.includes("sza"))   return "szabo";
-    if (n.includes("finney") || n.includes("fin"))  return "finney";
-    return "unknown";
-  };
-
-  const PHASE_ORDER = ["explore","commit","reveal","synthesis"];
-
-  // ── Phase Banner ──
-  function updatePhase(coord, state) {
-    const phase = (coord && coord.phase) || (state && state.cyclePhase) || "explore";
-    const cycle = (coord && coord.cycleNumber) || 1;
-    const remaining = Math.round(((coord && coord.windowRemainingMs)||0)/1000);
-    const idx = PHASE_ORDER.indexOf(phase);
-
-    setText("phase-cycle", `Cycle ${cycle}`);
-    setText("phase-timer", remaining > 0 ? `${remaining}s` : "—");
-
-    PHASE_ORDER.forEach((p, i) => {
-      const dot = el(`pd-${p}`);
-      const name = el(`pn-${p}`);
-      if (!dot || !name) return;
-      dot.className = "phase-dot";
-      name.className = "phase-name";
-      if (i < idx)      { dot.classList.add("done"); name.classList.add("done"); }
-      else if (i === idx){ dot.classList.add("active"); name.classList.add("active"); }
-    });
-  }
-
-  // ── System Snapshot (judge readable controls) ──
-  function updateSystemSnapshot(state, health, oracle) {
-    const autonomy = state?.autonomy || {};
-    const llmState = state?.llmProvider || {};
-    const llmUsage = state?.llm || {};
-    const bad = !!autonomy.degraded;
-    const runtimeIssue = state?.step === 0;
-    const cycle = Number(state?.cycleNumber || 0);
-    const phase = String(state?.cyclePhase || "explore").toUpperCase();
-
-    setText("sys-cycle", `Cycle ${cycle || 1}`);
-    setText("sys-phase", `phase: ${phase}`);
-    setText("sys-autonomy", bad ? "Safe fallback mode active" : "Running normally");
-    setText("sys-autonomy-sub", `restarts: ${safeNum(autonomy.restartCount)} · step: ${safeNum(state?.step, "—")}`);
-    setText("sys-llm", `${llmState.provider || llmState.active || "LLM not ready"}`);
-    const llmUsageText = `${safeNum(llmUsage.dailyCount, "0")}/${safeNum(llmUsage.dailyLimit, "0")} daily calls`;
-    setText("sys-llm-usage", llmUsageText);
-    setText("sys-health", bad ? "Degraded" : "Green");
-    setText("sys-health-sub", bad ? "Last issue: " + safeNum(autonomy.lastRuntimeError, "monitoring") : "No active runtime warnings");
-
-    setPill("sys-status", bad ? "degraded" : "healthy", bad ? "warn" : runtimeIssue ? "bad" : "ok");
-    const statusTone = bad ? "warn" : runtimeIssue ? "bad" : "ok";
-    toneCard("sys-cycle", statusTone);
-    toneCard("sys-health", statusTone);
-    toneCard("sys-autonomy", statusTone);
-    toneCard("sys-llm", statusTone);
-
-    const healthOk = (health && !health.degraded);
-    if (typeof healthOk === "boolean" && !healthOk) {
-      setPill("sys-status", "backend issue", "bad");
-      setText("sys-health", "Bad");
-      setText("sys-health-sub", "Service health API reports degraded state");
-      toneCard("sys-health", "bad");
-    }
-  }
-
-  function updateJudgeBrief(state, oracle, agents) {
-    const coord = state?.coordinator || {};
-    const phase = String(coord.phase || state?.cyclePhase || "explore").toUpperCase();
-    const cycle = safeNum(coord.cycleNumber || state?.cycleNumber || 1, "1");
-    const agg = (oracle && oracle.aggregated) || {};
-    const answer = String(agg.answer || "PENDING").toUpperCase();
-    const confidence = +agg.confidence || 0;
-    const activeAgents = Array.isArray(agents) ? agents.filter(a => a?.name).length : 3;
-    const byAgent = Array.isArray(oracle?.byAgent) ? oracle.byAgent : [];
-    const hasSignal = byAgent.some(a => a?.current?.direction);
-
-    setText("judge-cycle", `Cycle ${cycle} • ${phase}`);
-    setText("judge-answer", answer === "UNCERTAIN" ? "UNCERTAIN" : answer);
-    setText("judge-confidence", `${(Math.max(0, Math.min(1, confidence)) * 100).toFixed(1)}%`);
-
-    const phaseMessage = phase === "SYNTHESIS"
-      ? "System is combining all three agents into one signed oracle signal."
-      : phase === "REVEAL"
-        ? "Agents are revealing committed predictions and preparing cross-checks."
-        : phase === "COMMIT"
-          ? "Agents are sealing predictions to cryptographic commitments before reveal."
-          : "Agents are gathering live market/chain context and drafting their thesis.";
-
-    const outcomeLabel = phase === "SYNTHESIS" || hasSignal
-      ? "Current feed includes active agent signals."
-      : "No active per-agent signal yet.";
-
-    setText(
-      "judge-narrative",
-      `${phaseMessage} ${activeAgents ? `${activeAgents} agents active.` : ""} ${outcomeLabel}`
-    );
-  }
-
-  function directionStyle(dir) {
-    if (dir === "bullish") return "bullish";
-    if (dir === "bearish") return "bearish";
-    return "neutral";
-  }
-
-  function mapDirectionToAnswer(direction) {
-    if (direction === "bullish") return "YES";
-    if (direction === "bearish") return "NO";
-    return "UNCERTAIN";
-  }
-
-  function normalizeQuestionEntry(entry) {
-    if (!entry) return "";
-    if (typeof entry === "string") return entry.trim();
-    const q = typeof entry.question === "string" ? entry.question.trim() : "";
-    const t = typeof entry.title === "string" ? entry.title.trim() : "";
-    return q || t || "";
-  }
-
-  function normalizeQuestionLink(entry) {
-    if (!entry || typeof entry !== "object" || !entry.link) return "";
-    const candidate = `${entry.link}`.trim();
-    return candidate.startsWith("http") ? candidate : "";
-  }
-
-  function getQuestionText(entry) {
-    if (!entry) return "";
-    if (typeof entry === "string") return entry.trim();
-    return normalizeQuestionEntry(entry);
-  }
-
-  function getQuestionSource(entry) {
-    if (!entry || typeof entry !== "object") return "agent";
-    const source = String(entry.source || "").trim();
-    return source || "agent";
-  }
-
-  function getQuestionLink(entry) {
-    if (!entry) return "";
-    if (typeof entry === "string") return "";
-    return normalizeQuestionLink(entry);
-  }
-
-  function setQuestionText(elementId, question, questionLink) {
-    const node = el(elementId);
-    if (!node) return;
-    node.textContent = question;
-
-    if (!questionLink) return;
-    const linkEl = document.createElement("a");
-    linkEl.href = questionLink;
-    linkEl.target = "_blank";
-    linkEl.rel = "noopener noreferrer";
-    linkEl.className = "oracle-link";
-    linkEl.textContent = "Open Polymarket";
-    linkEl.style.marginLeft = "8px";
-    linkEl.style.fontSize = "0.82rem";
-    linkEl.style.opacity = "0.9";
-    node.append(" · ");
-    node.append(linkEl);
-  }
-
-  // ── Oracle Hero ──
-  function updateOracle(oracle, questions) {
-    const agg = (oracle && oracle.aggregated) || {};
-    const byAgent = (oracle && Array.isArray(oracle.byAgent)) ? oracle.byAgent : [];
-    const answer = String(agg.answer || "UNCERTAIN").toUpperCase();
-    const conf = +agg.confidence || 0;
-    const agentQuestion = byAgent.find(x => x?.current?.question)?.current?.question;
-    const questionEntry = (Array.isArray(questions) && questions.find(Boolean)) || agentQuestion || "Waiting for first cycle…";
-    const question = getQuestionText(questionEntry);
-    const questionLink = getQuestionLink(questionEntry);
-
-    const heroAns = el("hero-answer");
-    if (heroAns) {
-      heroAns.textContent = answer === "UNCERTAIN" ? "?" : answer;
-      heroAns.className = `answer-value ${answer}`;
-    }
-    setQuestionText("hero-question", question, questionLink);
-    setText("hero-conf", fmt(conf));
-    setText("hero-agents", String(byAgent.length || 3));
-
-    const heroSource = getQuestionSource(questionEntry);
-    const heroFocus = heroSource || byAgent[0]?.current?.ticker || "Polymarket";
-    setText("hero-ticker", String(heroFocus).toUpperCase());
-
-    const dir = byAgent[0]?.current?.direction || agg.consensusDirection || "—";
-    const dirEl = el("hero-dir");
-    if (dirEl) {
-      dirEl.textContent = String(dir).toUpperCase();
-      dirEl.style.color = dir === "bullish" ? "var(--green)" : dir === "bearish" ? "var(--red)" : "var(--muted)";
-    }
-    const confBar = el("hero-conf-bar");
-    if (confBar) confBar.style.width = pct(conf);
-
-    // votes
-    const preds = byAgent.map(x => x?.current).filter(Boolean);
-    const bullish = preds.filter(p => p.direction === "bullish" || String(p.answer).toUpperCase() === "YES").length;
-    const bearish = preds.filter(p => p.direction === "bearish" || String(p.answer).toUpperCase() === "NO").length;
-    const neutral = preds.filter(p => p.direction === "neutral" || String(p.answer).toUpperCase() === "UNCERTAIN").length;
-    const total = Math.max(bullish + bearish + neutral, 1);
-
-    setText("vote-yes-n", bullish);
-    setText("vote-no-n", bearish);
-    setText("vote-unc-n", neutral);
-    const yBar = el("vote-yes"); if (yBar) yBar.style.width = pct(bullish/total);
-    const nBar = el("vote-no");  if (nBar) nBar.style.width = pct(bearish/total);
-    const uBar = el("vote-unc"); if (uBar) uBar.style.width = pct(neutral/total);
-  }
-
-  function updateQuestionsFeed(questions) {
-    const feed = el("questions-feed");
-    if (!feed) return;
-    const items = (Array.isArray(questions) ? questions : []).slice(0, 6);
-    setText("question-count", `${items.length} active`);
-    if (!items.length) {
-      feed.innerHTML = '<div class="empty">No active Polymarket question available yet.</div>';
-      return;
-    }
-    feed.innerHTML = items.map(q => {
-      const text = getQuestionText(q) || "No question text";
-      const link = getQuestionLink(q);
-      const source = getQuestionSource(q);
-      return `<div class="feed-item">
-        <div class="feed-meta" style="justify-content:space-between">
-          <span class="feed-tag">${source}</span>
-          ${link ? `<span><a class="oracle-link" href="${link}" target="_blank" rel="noopener noreferrer">Open Polymarket</a></span>` : ""}
-        </div>
-        <div class="feed-text">${String(text).slice(0, 240)}</div>
-      </div>`;
-    }).join("");
-  }
-
-  // ── Agent Cards (overview) ──
-  const AGENT_KEYS = ["nakamoto","szabo","finney"];
-
-  function updateAgentCards(agents, byAgent) {
-    const byAgentMap = {};
-    (byAgent || []).forEach(entry => {
-      const key = agentKey(entry?.agentName || "");
-      if (key !== "unknown" && entry?.current) {
-        byAgentMap[key] = entry.current;
-      }
-    });
-
-    const byKey = {};
-    (agents || []).forEach(a => {
-      const key = agentKey(a.name || a.specialization || "");
-      if (key !== "unknown") byKey[key] = a;
-    });
-
-    AGENT_KEYS.forEach(key => {
-      const a = byKey[key] || {};
-      const agentDecision = byAgentMap[key] || null;
-      const phase = String(a.cyclePhase || a.phase || "explore").toLowerCase();
-      const badge = el(`ab-${key}`);
-      if (badge) {
-        badge.textContent = phase;
-        badge.className = `agent-phase-badge badge-${PHASE_ORDER.includes(phase) ? phase : "explore"}`;
-      }
-
-      const prediction = agentDecision || a.currentPrediction || {};
-      const confidence = prediction.confidence || 0;
-      const direction = prediction.direction || "neutral";
-      const question = prediction.question || "";
-      const answer = mapDirectionToAnswer(direction);
-
-      const predEl = el(`ap-${key}`);
-      if (predEl) {
-        const text = question
-          ? `${answer} — ${question}`
-          : prediction.reasoningSummary || a.latestThought?.conclusion || defaultIdleText(key);
-        predEl.textContent = String(text).slice(0, 120);
-        predEl.className = `agent-prediction ${directionStyle(direction)}`;
-      }
-
-      const confEl = el(`apc-${key}`);
-      if (confEl) {
-        confEl.textContent = `Confidence: ${(Number(confidence) * 100).toFixed(0)}%`;
-      }
-
-      const qEl = el(`aq-${key}`);
-      if (qEl) {
-        qEl.textContent = question
-          ? `Question: ${String(question).slice(0, 180)}`
-          : "Waiting for a fresh Polymarket forecast.";
-      }
-
-      setText(`at-${key}`, a.tokensUsed ? String(a.tokensUsed) : "—");
-      setText(`as-${key}`, a.step ? String(a.step) : a.stepCount ? String(a.stepCount) : "—");
-
-      const hashEl = el(`ah-${key}`);
-      if (hashEl) {
-        const h = a.commitmentHash;
-        if (h) {
-          hashEl.textContent = h.slice(0, 52) + "…";
-          hashEl.className = "commit-hash has-hash";
-        } else {
-          hashEl.textContent = "no commitment yet";
-          hashEl.className = "commit-hash";
-        }
-      }
-    });
-  }
-
-  function updateTruthTerminal(byAgent) {
-    const terminal = el("truth-terminal");
-    if (!terminal) return;
-    const entries = (Array.isArray(byAgent) ? byAgent : []).filter(e => e && e.current && e.current.question);
-    setText("truth-count", `${entries.length} active predictions`);
-    if (!entries.length) {
-      terminal.innerHTML = '<div class="empty">No agent-side questions emitted yet. Enable LLM/API connectivity to start independent scoring.</div>';
-      return;
-    }
-    terminal.innerHTML = entries.map((item) => {
-      const name = item.agentName || "Agent";
-      const current = item.current || {};
-      const ans = mapDirectionToAnswer(current.direction);
-      const confidence = current.confidence || 0;
-      const q = current.question || "No active question";
-      const reason = current.reasoning || current.reasoningSummary || "";
-      return `<div class="feed-item">
-        <div class="feed-agent">${name}</div>
-        <div class="feed-text"><strong>${ans}</strong> · ${String(q).slice(0, 210)}</div>
-        <div class="feed-meta"><span>${fmt(confidence)}</span><span>precommit ${current.preCommitRef ? "✓" : "…precommit pending"}</span></div>
-        ${reason ? `<div class="feed-text" style="margin-top:4px;color:var(--muted);font-size:0.75rem">${String(reason).slice(0, 180)}</div>` : ""}
-      </div>`;
-    }).join("");
-  }
-
-  function defaultIdleText(key) {
-    if (key === "nakamoto") return "Analyzing chart patterns and support/resistance levels…";
-    if (key === "szabo")    return "Reading macro narrative and Fear & Greed signals…";
-    if (key === "finney")   return "Scanning on-chain flows and exchange outflows…";
-    return "Waiting…";
-  }
-
-  // ── Thoughts Feed ──
-  function updateThoughts(thoughts) {
-    const feed = el("thoughts-feed");
-    if (!feed) return;
-    const items = (Array.isArray(thoughts) ? thoughts : []).slice(0, 30);
-    setText("thoughts-count", `${items.length}`);
-    if (!items.length) {
-      feed.innerHTML = '<div class="empty">Waiting for thoughts…</div>';
-      return;
-    }
-    feed.innerHTML = items.map(t => {
-      const key = agentKey(t.agentName || t.agentId || "");
-      const text = t.conclusion || t.text || t.content || "—";
-      const conf = t.confidence ? fmt(t.confidence) : "";
-      const actions = Array.isArray(t.suggestedActions) ? t.suggestedActions.slice(0,2).map(a => `<span class="feed-tag">${a}</span>`).join("") : "";
-      const ts = t.timestamp ? ago(t.timestamp) : "";
-      return `<div class="feed-item">
-        <div class="feed-agent ${key}">${t.agentName || key}</div>
-        <div class="feed-text">${String(text).slice(0,200)}</div>
-        <div class="feed-meta">${conf ? `<span>${conf}</span>` : ""}${ts ? `<span>${ts}</span>` : ""}${actions}</div>
-      </div>`;
-    }).join("");
-  }
-
- 
-
-  // ── Main refresh ──
-  async function refresh() {
-    const [state, oracle, thoughts, agents, questionsResp, health] = await Promise.all([
-      get("/api/state", {}),
-      get("/api/oracle", {}),
-      get("/api/thoughts", []),
-      get("/api/agents", []),
-      get("/api/questions", { active: [] }),
-      get("/api/health", {}),
+// ── Polling ──
+async function poll() {
+  try {
+    const [hbRes, tasksRes] = await Promise.all([
+      fetch('/api/heartbeat').then(r => r.json()).catch(() => null),
+      fetch('/api/tasks').then(r => r.json()).catch(() => []),
     ]);
+    if (hbRes) hb = hbRes;
+    if (tasksRes) tasks = tasksRes;
+    updateUI();
+  } catch(e) { console.warn('Poll error', e); }
+}
 
-    const coord = (state && state.coordinator) || null;
-    const questions = (questionsResp && Array.isArray(questionsResp.active)) ? questionsResp.active : [];
+// Fetch organism details less frequently
+let orgData = null;
+async function pollOrg() {
+  try {
+    orgData = await fetch('/api/organism').then(r => r.json()).catch(() => null);
+    updateBadges();
+  } catch {}
+}
 
-    // Connection status
-    const connected = !!(oracle || state);
-    const dot  = el("conn-dot");
-    const label = el("conn-label");
-    if (dot)   dot.style.background  = connected ? "var(--green)" : "var(--red)";
-    if (label) label.textContent = connected ? "CONNECTED" : "OFFLINE";
+function updateUI() {
+  if (!hb) return;
 
-    updatePhase(coord, state);
-    updateSystemSnapshot(state, health, oracle);
-    updateJudgeBrief(state, oracle, Array.isArray(agents) ? agents : []);
-    updateOracle(oracle, questions);
-    updateAgentCards(Array.isArray(agents) ? agents : [], Array.isArray(oracle?.byAgent) ? oracle.byAgent : []);
-    updateTruthTerminal(Array.isArray(oracle?.byAgent) ? oracle.byAgent : []);
-    updateThoughts(thoughts);
-    updateQuestionsFeed(questions);
+  // Status
+  const pill = document.getElementById('status-pill');
+  const statusText = document.getElementById('status-text');
+  if (hb.alive) {
+    pill.className = 'status-pill alive';
+    statusText.textContent = 'ALIVE';
+  } else {
+    pill.className = 'status-pill dead';
+    statusText.textContent = 'DEAD';
+    document.getElementById('death-overlay').classList.add('visible');
   }
 
-  refresh();
-  setInterval(refresh, 2500);
+  // Uptime
+  const m = Math.floor(hb.uptime / 60);
+  const s = Math.floor(hb.uptime % 60);
+  document.getElementById('uptime').textContent = m > 0 ? `${m}m ${s}s` : `${s}s`;
+
+  // Balance
+  const bal = hb.balance;
+  document.getElementById('balance-display').textContent = bal.toFixed(1) + ' cr';
+  document.getElementById('m-balance').textContent = bal.toFixed(2);
+  const pct = Math.max(0, Math.min(100, bal));
+  const bar = document.getElementById('balance-bar');
+  bar.style.width = pct + '%';
+  bar.style.background = bal > 30 ? '#0cbb76' : bal > 10 ? '#ffbf00' : '#ff4d61';
+  document.getElementById('m-balance').className = 'metric-value ' + (bal > 30 ? 'green' : bal > 10 ? 'gold' : 'red');
+
+  // Orb
+  const orb = document.getElementById('orb');
+  if (!hb.alive) orb.className = 'orb dead';
+  else if (hb.activity === 'working') orb.className = bal > 30 ? 'orb working' : bal > 10 ? 'orb working warning' : 'orb working critical';
+  else orb.className = bal > 30 ? 'orb' : bal > 10 ? 'orb warning' : 'orb critical';
+
+  // Activity
+  const actMap = { idle: 'IDLE', scanning: 'SCANNING', working: 'WORKING', 'self-work': 'SELF-MAINTENANCE' };
+  document.getElementById('activity').textContent = hb.alive ? (actMap[hb.activity] || hb.activity.toUpperCase()) : 'OFFLINE';
+
+  // Task info
+  const current = hb.currentTaskId ? tasks.find(t => t.id === hb.currentTaskId) : null;
+  document.getElementById('task-info').textContent = current ? `${current.type}: "${current.input.slice(0, 50)}..."` : '';
+
+  // TTD
+  const ttd = hb.ttd;
+  if (ttd > 0) {
+    const tm = Math.floor(ttd / 60);
+    const ts2 = Math.floor(ttd % 60);
+    document.getElementById('m-ttd').textContent = tm > 0 ? `${tm}m ${ts2}s` : `${ts2}s`;
+    const ttdPct = Math.min(100, (ttd / 600) * 100); // 10 min = 100%
+    const ttdBar = document.getElementById('ttd-bar');
+    ttdBar.style.width = ttdPct + '%';
+    ttdBar.style.background = ttd > 180 ? '#0cbb76' : ttd > 60 ? '#ffbf00' : '#ff4d61';
+  } else {
+    document.getElementById('m-ttd').textContent = hb.alive ? 'STABLE' : 'DEAD';
+  }
+
+  // Metabolism metrics
+  document.getElementById('m-burn').textContent = hb.burnRate.toFixed(4);
+  document.getElementById('m-earn').textContent = hb.earnRate.toFixed(4);
+  const net = hb.netRate;
+  const netEl = document.getElementById('m-net');
+  netEl.textContent = (net >= 0 ? '+' : '') + net.toFixed(4);
+  netEl.className = 'metric-value ' + (net >= 0 ? 'green' : 'red');
+  document.getElementById('m-tasks').textContent = hb.tasksCompleted;
+
+  if (orgData) {
+    document.getElementById('m-earned').textContent = orgData.totalEarned?.toFixed(2) || '0';
+    document.getElementById('m-spent').textContent = orgData.totalSpent?.toFixed(2) || '0';
+    const eff = orgData.metabolism?.efficiency || 0;
+    document.getElementById('m-eff').textContent = (eff * 100).toFixed(0) + '%';
+    document.getElementById('m-fp').textContent = orgData.identity?.fingerprint || '--';
+  }
+
+  // Tasks
+  renderTasks();
+
+  // Disable submit if dead
+  document.getElementById('task-btn').disabled = !hb.alive;
+}
+
+function renderTasks() {
+  const list = document.getElementById('task-list');
+  if (!tasks.length) { list.innerHTML = '<div style="color:#334;font-size:10px;padding:8px">No tasks yet</div>'; return; }
+
+  list.innerHTML = tasks.slice(0, 20).map(t => `
+    <div class="task-item">
+      <div class="task-head">
+        <span class="task-type ${t.type}">${t.type}</span>
+        <span class="task-status ${t.status}">${t.status}</span>
+      </div>
+      <div class="task-input">${esc(t.input.slice(0, 80))}${t.input.length > 80 ? '...' : ''}</div>
+      ${t.result ? `<div class="task-result">${esc(t.result.slice(0, 300))}${t.result.length > 300 ? '...' : ''}</div>` : ''}
+      ${t.status === 'completed' ? `<div class="task-reward">+${t.reward} cr earned | ${t.tokensUsed} tokens | cost ${t.costIncurred?.toFixed(3) || '?'} cr</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function updateBadges() {
+  if (!orgData) return;
+  const tee = orgData.tee?.teeMode;
+  document.getElementById('badge-tee').className = 'badge' + (tee ? '' : ' warn');
+  document.getElementById('badge-tee').querySelector('span:last-child') && (document.getElementById('badge-tee').lastChild.textContent = tee ? 'Intel TDX Enclave' : 'Local Dev Mode');
+
+  const research = orgData.research?.enabled;
+  document.getElementById('badge-research').className = 'badge' + (research ? '' : ' warn');
+
+  const llm = orgData.llm;
+  if (llm) document.getElementById('badge-llm').lastChild.textContent = `LLM: ${llm.provider}/${llm.model}`;
+}
+
+// ── Submit Task ──
+window.submitTask = async function() {
+  const type = document.getElementById('task-type').value;
+  const input = document.getElementById('task-input').value.trim();
+  if (!input || input.length < 3) return;
+
+  const btn = document.getElementById('task-btn');
+  btn.disabled = true; btn.textContent = 'SUBMITTING...';
+
+  try {
+    const res = await fetch('/api/task', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, input }),
+    });
+    if (res.ok) {
+      document.getElementById('task-input').value = '';
+      btn.textContent = 'SUBMITTED';
+      setTimeout(() => poll(), 500);
+    } else {
+      const data = await res.json();
+      btn.textContent = data.error || 'ERROR';
+    }
+  } catch { btn.textContent = 'OFFLINE'; }
+  setTimeout(() => { btn.textContent = 'SUBMIT TASK'; btn.disabled = false; }, 1500);
+};
+
+// ── Boot ──
+poll();
+pollOrg();
+setInterval(poll, 2000);
+setInterval(pollOrg, 10000);
 </script>
 </body>
 </html>

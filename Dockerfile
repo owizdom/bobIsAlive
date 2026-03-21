@@ -10,6 +10,7 @@ RUN npm install
 COPY tsconfig.json ./
 COPY agents/ ./agents/
 COPY dashboard/ ./dashboard/
+COPY scripts/ ./scripts/
 RUN npm run build
 
 # ── Runtime stage ──
@@ -23,6 +24,5 @@ COPY dashboard/index.html             ./dashboard/index.html
 COPY scripts/supervise-swarm.sh      ./scripts/supervise-swarm.sh
 RUN chmod +x ./scripts/supervise-swarm.sh
 
-VOLUME ["/data"]
 EXPOSE 3001
 CMD ["bash", "-lc", "npm run supervise"]

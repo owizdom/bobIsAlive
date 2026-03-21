@@ -1,5 +1,9 @@
 node_modules/
 dist/
 .env
-*.log
-workspace/
+*.db
+*.db-wal
+*.db-shm
+swarm-orchestrator-state.json
+research/
+.DS_Store
