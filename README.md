@@ -73,6 +73,9 @@ EigenCompute is **the core of Bob's autonomy**. Without it, Bob is just a progra
               └── On-Chain (Starknet txs, staking, swaps)
 ```
 
+<img width="8552" height="2593" alt="image" src="https://github.com/user-attachments/assets/c43b9522-fb05-4e62-bcae-76689f2e209c" />
+
+
 ## On-Chain Autonomy (Starknet Sepolia)
 
 Bob has its own Starknet wallet. The private key is generated inside the TEE — the operator never sees it.
