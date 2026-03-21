@@ -3,7 +3,7 @@ import { useHeartbeat, useOrganism, useTasks, useDoodles, useMonologue, submitTa
 import type { Heartbeat, Task, Doodle } from './types'
 import type { MonologueEntry } from './hooks/useOrganism'
 
-type View = 'brain' | 'gallery' | 'tasks'
+type View = 'brain' | 'gallery' | 'tasks' | 'chain'
 
 export default function App() {
   const [view, setView] = useState<View>('brain')
@@ -35,6 +35,7 @@ export default function App() {
     { id: 'brain', icon: '', label: 'Brain' },
     { id: 'gallery', icon: '', label: 'Gallery' },
     { id: 'tasks', icon: '', label: 'Tasks' },
+    { id: 'chain', icon: '', label: 'On-Chain' },
   ]
 
   return (
@@ -125,6 +126,7 @@ export default function App() {
           {view === 'brain' && <BrainView hb={hb} monologue={monologue} />}
           {view === 'gallery' && <GalleryView doodles={doodles} />}
           {view === 'tasks' && <TasksView tasks={tasks} alive={alive} onRefresh={refresh} />}
+          {view === 'chain' && <ChainView strkBalance={strkBalance} />}
         </div>
       </div>
 
@@ -766,6 +768,100 @@ function TasksView({ tasks, alive, onRefresh }: { tasks: Task[]; alive: boolean;
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+/* ─── On-Chain ─── */
+function ChainView({ strkBalance }: { strkBalance: string }) {
+  const [chain, setChain] = useState<any>(null)
+  useEffect(() => {
+    const poll = () => fetch('/api/chain').then(r => r.json()).then(setChain).catch(() => {})
+    poll(); const i = setInterval(poll, 5000); return () => clearInterval(i)
+  }, [])
+
+  const voyagerUrl = (hash: string) => `https://sepolia.voyager.online/tx/${hash}`
+
+  return (
+    <div className="p-6 max-w-3xl">
+      <h3 className="text-[15px] font-bold font-display italic mb-1">On-Chain Activity</h3>
+      <p className="text-[12px] text-text-3 mb-6">Bob's autonomous Starknet Sepolia transactions — heartbeats, staking, swaps, and survival actions.</p>
+
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="bg-surface rounded-xl border border-border p-4">
+          <div className="text-[9px] text-text-4 uppercase tracking-wider">STRK Balance</div>
+          <div className="font-mono text-[18px] font-bold text-green mt-1">{parseFloat(strkBalance).toFixed(2)}</div>
+        </div>
+        <div className="bg-surface rounded-xl border border-border p-4">
+          <div className="text-[9px] text-text-4 uppercase tracking-wider">Heartbeats</div>
+          <div className="font-mono text-[18px] font-bold text-text mt-1">{chain?.totalHeartbeats ?? 0}</div>
+        </div>
+        <div className="bg-surface rounded-xl border border-border p-4">
+          <div className="text-[9px] text-text-4 uppercase tracking-wider">Swaps</div>
+          <div className="font-mono text-[18px] font-bold text-blue mt-1">{chain?.totalSwaps ?? 0}</div>
+        </div>
+        <div className="bg-surface rounded-xl border border-border p-4">
+          <div className="text-[9px] text-text-4 uppercase tracking-wider">Emergencies</div>
+          <div className="font-mono text-[18px] font-bold text-red mt-1">{chain?.totalEmergencyInjections ?? 0}</div>
+        </div>
+      </div>
+
+      {/* Status cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+        <div className={`bg-surface rounded-xl border p-4 ${chain?.isStakedEndur ? 'border-green/30' : 'border-border'}`}>
+          <div className="flex items-center justify-between">
+            <span className="text-[13px] font-semibold">Endur xSTRK Staking</span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${chain?.isStakedEndur ? 'bg-green-bg text-green' : 'bg-bg-alt text-text-4'}`}>
+              {chain?.isStakedEndur ? 'ACTIVE' : 'PENDING'}
+            </span>
+          </div>
+          {chain?.isStakedEndur && (
+            <div className="mt-2 text-[12px] text-text-3">
+              Staked <span className="font-mono font-bold text-green">{chain.stakeAmount} STRK</span> at ~10% APY
+            </div>
+          )}
+          {!chain?.isStakedEndur && (
+            <div className="mt-2 text-[11px] text-text-4">Triggers when STRK balance &gt; 30</div>
+          )}
+        </div>
+        <div className="bg-surface rounded-xl border border-border p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-[13px] font-semibold">ETH Balance</span>
+            <span className="font-mono text-[13px] text-text">{parseFloat(chain?.ethBalance || '0').toFixed(6)}</span>
+          </div>
+          <div className="mt-2 text-[11px] text-text-4">From AVNU STRK→ETH swaps (diversification)</div>
+        </div>
+      </div>
+
+      {/* Recent transactions */}
+      <h4 className="text-[13px] font-bold font-display italic mb-3">Recent Transactions</h4>
+      {(!chain?.recentTxs || chain.recentTxs.length === 0) ? (
+        <div className="text-center py-8 text-text-4 text-sm">No on-chain transactions yet. First heartbeat in ~5 minutes.</div>
+      ) : (
+        <div className="space-y-2">
+          {[...chain.recentTxs].reverse().map((tx: any, i: number) => (
+            <div key={i} className="bg-surface rounded-lg border border-border p-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                  tx.type === 'heartbeat' ? 'bg-green-bg text-green'
+                  : tx.type === 'emergency' ? 'bg-red-bg text-red'
+                  : tx.type === 'swap' ? 'bg-blue-bg text-blue'
+                  : tx.type.includes('stake') ? 'bg-amber-bg text-amber'
+                  : tx.type === 'death' ? 'bg-red-bg text-red'
+                  : 'bg-bg-alt text-text-4'
+                }`}>{tx.type}</span>
+                <span className="font-mono text-[11px] text-text-3">{tx.hash.slice(0, 18)}...</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-text-4">{new Date(tx.timestamp).toLocaleTimeString()}</span>
+                <a href={voyagerUrl(tx.hash)} target="_blank" rel="noopener noreferrer"
+                  className="text-[10px] text-blue hover:underline font-semibold">Voyager</a>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
