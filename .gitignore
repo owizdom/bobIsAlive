@@ -6,4 +6,5 @@ dist/
 *.db-shm
 swarm-orchestrator-state.json
 research/
+doodles/
 .DS_Store
