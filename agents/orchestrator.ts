@@ -369,7 +369,7 @@ app.get("/api/health", (_req, res) => res.redirect("/health"));
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`
 ╔══════════════════════════════════════════════════════╗
 ║  DIGITAL ORGANISM — Autonomous AI Agent              ║

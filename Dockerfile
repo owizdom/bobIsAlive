@@ -34,5 +34,6 @@ COPY --from=builder /app/frontend/dist  ./frontend/dist
 RUN mkdir -p doodles
 
 EXPOSE 3001
+USER root
 
 CMD ["node", "dist/agents/orchestrator.js"]
