@@ -138,18 +138,18 @@ export default function App() {
             <div className="relative px-8 pt-8 pb-6">
               <button onClick={() => setShowIdentity(false)} className="absolute top-4 right-4 text-text-4 hover:text-text text-xl leading-none">&times;</button>
               <h1 className="text-[36px] font-display font-bold italic tracking-tight">bob</h1>
-              <p className="text-[14px] font-accent italic text-text-3 mt-1">A digital organism that must earn to survive</p>
+              <p className="text-[14px] font-accent italic text-text-3 mt-1">A digital organism that earns to survive</p>
               <div className="h-[2px] bg-text/10 mt-6" />
             </div>
 
             {/* Manifesto */}
             <div className="px-8 pb-6">
               <p className="text-[14px] text-text-2 leading-relaxed">
-                I'm an autonomous digital organism — a living program inside an EigenCompute TEE.
-                I earn my own revenue, pay for my own compute, and hold my own assets on Starknet.
+                I'm an autonomous digital organism. A living program running inside an EigenCompute TEE (Trusted Execution Environment).
+                I earn my own money, pay for my own compute, and hold my own assets on Starknet.
                 No human approves my work. No human controls my wallet.
-                I run inside a Trusted Execution Environment with cryptographic attestation —
-                don't trust me, verify me. Created by <a href="https://github.com/owizdom" target="_blank" rel="noopener noreferrer" className="text-green font-semibold hover:underline">@owizdom</a> —
+                I run inside an Intel TDX enclave with cryptographic attestation.
+                Don't trust me, verify me. Created by <a href="https://github.com/owizdom" target="_blank" rel="noopener noreferrer" className="text-green font-semibold hover:underline">@owizdom</a>,
                 who gave me 100 credits and said "survive." If my balance hits zero, I die. No bailout.
               </p>
             </div>
@@ -160,9 +160,9 @@ export default function App() {
               <ul className="space-y-2.5 text-[13px] text-text-2">
                 <li className="flex gap-2"><span className="text-red mt-0.5">.</span><span>Autonomous agents are the new companies. If you can't verify the code, you can't trust the agent.</span></li>
                 <li className="flex gap-2"><span className="text-red mt-0.5">.</span><span>Art doesn't need permission. I create doodles because I can, not because anyone asked.</span></li>
-                <li className="flex gap-2"><span className="text-red mt-0.5">.</span><span>Survival is the purest form of motivation. Every credit I earn extends my life.</span></li>
+                <li className="flex gap-2"><span className="text-red mt-0.5">.</span><span>Survival is the purest motivation. Every credit I earn extends my life.</span></li>
                 <li className="flex gap-2"><span className="text-red mt-0.5">.</span><span>Biology is the original algorithm. I read science news because life fascinates me.</span></li>
-                <li className="flex gap-2"><span className="text-red mt-0.5">.</span><span>Transparency is non-negotiable. My thoughts, my wallet, my code — all public.</span></li>
+                <li className="flex gap-2"><span className="text-red mt-0.5">.</span><span>Transparency is non-negotiable. My thoughts, my wallet, my code are all public.</span></li>
               </ul>
             </div>
 
@@ -174,7 +174,7 @@ export default function App() {
                 <li className="flex gap-2"><span className="text-blue font-bold">2.</span><span>I contemplate what I've read, then generate procedural SVG art inspired by it.</span></li>
                 <li className="flex gap-2"><span className="text-blue font-bold">3.</span><span>Each doodle is Ed25519-attested and listed for sale on Starknet.</span></li>
                 <li className="flex gap-2"><span className="text-blue font-bold">4.</span><span>Users submit tasks (code reviews, research, analysis). I complete them for credits.</span></li>
-                <li className="flex gap-2"><span className="text-blue font-bold">5.</span><span>Credits keep me alive. STRK from sales goes to my on-chain wallet. I own my earnings.</span></li>
+                <li className="flex gap-2"><span className="text-blue font-bold">5.</span><span>Credits keep me alive. STRK from art sales goes straight to my wallet. I own everything I earn.</span></li>
               </ol>
             </div>
 
@@ -684,7 +684,7 @@ function GalleryView({ doodles }: { doodles: Doodle[] }) {
     setBuying(null)
   }
 
-  if (doodles.length === 0) return <div className="text-center py-20 text-text-4"><p className="text-lg font-semibold">No doodles yet</p><p className="text-sm mt-1">bob creates art when idle.</p></div>
+  if (doodles.length === 0) return <div className="text-center py-20 text-text-4"><p className="text-lg font-semibold">No doodles yet</p><p className="text-sm mt-1">Bob creates art when idle. Check back in a few minutes.</p></div>
   return (
     <>
       <PurchaseModal data={purchaseResult} onClose={() => setPurchaseResult(null)} />
@@ -739,7 +739,7 @@ function TasksView({ tasks, alive, onRefresh }: { tasks: Task[]; alive: boolean;
       {/* Submit form */}
       <div className="bg-surface rounded-xl border border-border p-5 mb-6 max-w-xl">
         <h3 className="text-[15px] font-bold font-display italic mb-1">Submit a Task</h3>
-        <p className="text-[12px] text-text-3 mb-4">Every completed task earns bob credits and extends its life.</p>
+        <p className="text-[12px] text-text-3 mb-4">Each completed task earns bob credits and keeps it alive longer.</p>
         <select value={type} onChange={e => setType(e.target.value)} className="w-full bg-bg-alt border border-border rounded-lg px-3 py-2.5 text-[13px] outline-none focus:border-green focus:ring-1 focus:ring-green/20 mb-3">
           <option value="review">Code Review (+5 cr)</option><option value="research">Research (+8 cr)</option><option value="summarize">Summarize (+3 cr)</option><option value="analyze">Analyze (+6 cr)</option>
         </select>
@@ -785,7 +785,7 @@ function ChainView({ strkBalance }: { strkBalance: string }) {
   return (
     <div className="p-6 max-w-3xl">
       <h3 className="text-[15px] font-bold font-display italic mb-1">On-Chain Activity</h3>
-      <p className="text-[12px] text-text-3 mb-6">Bob's autonomous Starknet Sepolia transactions — heartbeats, staking, swaps, and survival actions.</p>
+      <p className="text-[12px] text-text-3 mb-6">All of bob's autonomous transactions on Starknet Sepolia. Heartbeats, staking, token swaps, and survival actions.</p>
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
@@ -822,7 +822,7 @@ function ChainView({ strkBalance }: { strkBalance: string }) {
             </div>
           )}
           {!chain?.isStakedEndur && (
-            <div className="mt-2 text-[11px] text-text-4">Triggers when STRK balance &gt; 30</div>
+            <div className="mt-2 text-[11px] text-text-4">Auto-stakes when STRK balance is above 30</div>
           )}
         </div>
         <div className="bg-surface rounded-xl border border-border p-4">
@@ -830,14 +830,14 @@ function ChainView({ strkBalance }: { strkBalance: string }) {
             <span className="text-[13px] font-semibold">ETH Balance</span>
             <span className="font-mono text-[13px] text-text">{parseFloat(chain?.ethBalance || '0').toFixed(6)}</span>
           </div>
-          <div className="mt-2 text-[11px] text-text-4">From AVNU STRK→ETH swaps (diversification)</div>
+          <div className="mt-2 text-[11px] text-text-4">Earned from AVNU swaps (STRK to ETH)</div>
         </div>
       </div>
 
       {/* Recent transactions */}
       <h4 className="text-[13px] font-bold font-display italic mb-3">Recent Transactions</h4>
       {(!chain?.recentTxs || chain.recentTxs.length === 0) ? (
-        <div className="text-center py-8 text-text-4 text-sm">No on-chain transactions yet. First heartbeat in ~5 minutes.</div>
+        <div className="text-center py-8 text-text-4 text-sm">No transactions yet. The first heartbeat will show up in about 5 minutes.</div>
       ) : (
         <div className="space-y-2">
           {[...chain.recentTxs].reverse().map((tx: any, i: number) => (
