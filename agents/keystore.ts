@@ -33,19 +33,6 @@ export function signContent(content: string, privateKeyHex: string): string {
   }
 }
 
-export function verifySignature(content: string, signatureHex: string, publicKeyHex: string): boolean {
-  try {
-    const pubKeyObj = crypto.createPublicKey({
-      key: Buffer.from(publicKeyHex, "hex"),
-      format: "der",
-      type: "spki",
-    });
-    return crypto.verify(null, Buffer.from(content), pubKeyObj, Buffer.from(signatureHex, "hex"));
-  } catch {
-    return false;
-  }
-}
-
 export function buildAttestation(
   content: string, agentId: string, timestamp: number,
   privateKeyHex: string, publicKeyHex: string
@@ -55,13 +42,3 @@ export function buildAttestation(
   return `ed25519:${sig.slice(0, 64)}:${publicKeyHex.slice(-32)}`;
 }
 
-export function verifyAttestation(
-  attestation: string, content: string, agentId: string,
-  timestamp: number, publicKeyHex: string
-): boolean {
-  if (!attestation.startsWith("ed25519:")) return false;
-  const parts = attestation.split(":");
-  if (parts.length < 3) return false;
-  const payload = `${agentId}|${timestamp}|${crypto.createHash("sha256").update(content).digest("hex")}`;
-  return verifySignature(payload, parts[1], publicKeyHex);
-}

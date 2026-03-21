@@ -80,8 +80,8 @@ export function getWalletAddress(): string {
 export async function getWalletBalance(): Promise<string> {
   if (!starknetReady || !starkAccount) return "0";
   try {
-    // ETH contract on Starknet
-    const ethAddr = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+    // STRK contract on Starknet
+    const ethAddr = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
     const { CallData } = require("starknet");
     const result = await starkProvider.callContract({
       contractAddress: ethAddr,
@@ -99,7 +99,7 @@ export async function listDoodle(
   svgFilename: string,
   attestation: string,
 ): Promise<DoodleListing> {
-  const priceEth = (0.0001 + Math.random() * 0.0049).toFixed(6);
+  const priceEth = (0.1 + Math.random() * 4.9).toFixed(4);
   const tokenId = nextTokenId++;
   let mintTxHash: string | null = null;
 
@@ -107,7 +107,7 @@ export async function listDoodle(
   if (chainEnabled && starkAccount) {
     try {
       const { CallData } = require("starknet");
-      const ethAddr = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+      const ethAddr = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
 
       const result = await starkAccount.execute({
         contractAddress: ethAddr,
@@ -144,7 +144,7 @@ export async function listDoodle(
   };
 
   listings.push(listing);
-  console.log(`[NFT] Listed: "${title}" for ${priceEth} ETH (token #${tokenId})`);
+  console.log(`[NFT] Listed: "${title}" for ${priceEth} STRK (token #${tokenId})`);
   return listing;
 }
 
@@ -166,6 +166,3 @@ export function getAvailableListings(): DoodleListing[] {
   return listings.filter(l => !l.sold).sort((a, b) => b.listedAt - a.listedAt);
 }
 
-export function getSoldListings(): DoodleListing[] {
-  return listings.filter(l => l.sold).sort((a, b) => (b.soldAt || 0) - (a.soldAt || 0));
-}

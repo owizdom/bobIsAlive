@@ -3,7 +3,7 @@ import { useHeartbeat, useOrganism, useTasks, useDoodles, useMonologue, submitTa
 import type { Heartbeat, Task, Doodle } from './types'
 import type { MonologueEntry } from './hooks/useOrganism'
 
-type View = 'brain' | 'gallery' | 'market' | 'tasks'
+type View = 'brain' | 'gallery' | 'tasks'
 
 export default function App() {
   const [view, setView] = useState<View>('brain')
@@ -118,13 +118,9 @@ export default function App() {
 
 /* ─── Living Organism Canvas ─── */
 function OrganismCanvas({ alive, balance, activity }: { alive: boolean; balance: number; activity: string }) {
-  const canvasRef = useState<HTMLCanvasElement | null>(null)
-  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null)
-
   useEffect(() => {
     const el = document.getElementById('organism-canvas') as HTMLCanvasElement
     if (!el) return
-    setCanvas(el)
     const ctx = el.getContext('2d')
     if (!ctx) return
 
@@ -291,10 +287,6 @@ function VitalRow({ label, value, unit, color = 'text-sidebar-active' }: { label
 function BrainView({ hb, monologue }: { hb: Heartbeat | null; monologue: MonologueEntry[] }) {
   const balance = hb?.balance ?? 100
   const alive = hb?.alive ?? true
-  const orbClass = !alive ? 'orb orb-lg dead' : (hb?.activity === 'working' || hb?.activity === 'self-work')
-    ? (balance < 10 ? 'orb orb-lg working crit' : balance < 30 ? 'orb orb-lg working warn' : 'orb orb-lg working')
-    : (balance < 10 ? 'orb orb-lg crit' : balance < 30 ? 'orb orb-lg warn' : 'orb orb-lg')
-
   const COLORS: Record<string, string> = {
     thought: 'text-purple', scan: 'text-text-3', earn: 'text-green', burn: 'text-red',
     doodle: 'text-amber', nft: 'text-amber', task: 'text-blue', improve: 'text-purple',
@@ -334,14 +326,85 @@ function BrainView({ hb, monologue }: { hb: Heartbeat | null; monologue: Monolog
   )
 }
 
+/* ─── Purchase Success Modal ─── */
+function PurchaseModal({ data, onClose }: {
+  data: { title: string; filename: string; price: string; txHash: string; creditsEarned: number; buyer: string } | null
+  onClose: () => void
+}) {
+  if (!data) return null
+  const voyagerUrl = `https://sepolia.voyager.online/tx/${data.txHash}`
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-surface rounded-2xl border border-green/30 shadow-2xl w-[420px] max-w-[90vw] overflow-hidden" onClick={e => e.stopPropagation()}>
+        {/* Doodle preview */}
+        <div className="relative">
+          <img src={`/doodles/${data.filename}`} alt={data.title} className="w-full aspect-square object-cover bg-bg-alt" />
+          <div className="absolute top-3 right-3 bg-green text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-lg">
+            PURCHASED
+          </div>
+        </div>
+
+        {/* Details */}
+        <div className="p-5 space-y-4">
+          <div>
+            <h3 className="text-[18px] font-bold font-display italic text-text">{data.title}</h3>
+            <p className="text-[12px] text-text-3 mt-1">You just kept bob alive a little longer.</p>
+          </div>
+
+          {/* Stats row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-bg-alt rounded-lg p-3 border border-border-light">
+              <div className="text-[10px] text-text-4 uppercase tracking-wider">Price Paid</div>
+              <div className="font-mono text-[16px] font-bold text-green mt-1">{data.price} STRK</div>
+            </div>
+            <div className="bg-bg-alt rounded-lg p-3 border border-border-light">
+              <div className="text-[10px] text-text-4 uppercase tracking-wider">Credits Earned</div>
+              <div className="font-mono text-[16px] font-bold text-amber mt-1">+{data.creditsEarned.toFixed(1)} cr</div>
+            </div>
+          </div>
+
+          {/* Transaction details */}
+          <div className="bg-bg-alt rounded-lg p-3 border border-border-light space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-text-4 uppercase tracking-wider">Transaction</span>
+              <span className="text-[10px] text-green font-semibold">Confirmed</span>
+            </div>
+            <div className="font-mono text-[11px] text-text-3 break-all">{data.txHash}</div>
+            <div className="flex items-center justify-between text-[10px] text-text-4">
+              <span>Buyer: {data.buyer.slice(0, 8)}...{data.buyer.slice(-6)}</span>
+              <span>Starknet Sepolia</span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3">
+            <a href={voyagerUrl} target="_blank" rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-2 bg-bg-alt border border-border hover:border-green/40 text-text text-[13px] font-semibold py-2.5 rounded-lg transition-colors">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              View on Voyager
+            </a>
+            <button onClick={onClose}
+              className="flex-1 bg-green text-white text-[13px] font-semibold py-2.5 rounded-lg hover:bg-green/90 transition-colors">
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ─── Gallery + Buy ─── */
 function GalleryView({ doodles }: { doodles: Doodle[] }) {
   const [listings, setListings] = useState<any[]>([])
   const [buying, setBuying] = useState<number | null>(null)
+  const [purchaseResult, setPurchaseResult] = useState<{
+    title: string; filename: string; price: string; txHash: string; creditsEarned: number; buyer: string
+  } | null>(null)
   const pollListings = () => fetch('/api/nft/listings').then(r => r.json()).then(d => setListings(d.listings || [])).catch(() => {})
   useEffect(() => { pollListings(); const i = setInterval(pollListings, 8000); return () => clearInterval(i) }, [])
 
-  const handleBuy = async (tokenId: number, priceEth: string) => {
+  const handleBuy = async (tokenId: number, priceStrk: string, title: string, filename: string) => {
     setBuying(tokenId)
     try {
       const { StarkZap, Amount, fromAddress, sepoliaTokens } = await import('starkzap')
@@ -350,24 +413,20 @@ function GalleryView({ doodles }: { doodles: Doodle[] }) {
         paymaster: { nodeUrl: 'https://starknet.paymaster.avnu.fi' },
       })
 
-      // Connect via Cartridge (gasless, social login)
       const wallet = await sdk.connectCartridge({
-        policies: [{ target: sepoliaTokens.ETH.address, method: 'transfer' }],
+        policies: [{ target: sepoliaTokens.STRK.address, method: 'transfer' }],
       })
 
-      // Get organism wallet address from API
       const orgData = await fetch('/api/organism').then(r => r.json())
       const bobWallet = orgData.nft?.wallet
 
       if (!bobWallet) { alert('Organism wallet not configured'); setBuying(null); return }
 
-      // Transfer ETH to bob's wallet
-      const tx = await wallet.transfer(sepoliaTokens.ETH, [
-        { to: fromAddress(bobWallet), amount: Amount.parse(priceEth, sepoliaTokens.ETH) },
+      const tx = await wallet.transfer(sepoliaTokens.STRK, [
+        { to: fromAddress(bobWallet), amount: Amount.parse(priceStrk, sepoliaTokens.STRK) },
       ])
       await tx.wait()
 
-      // Record the purchase
       const connectedAddr = wallet.address || 'unknown'
       const r = await fetch('/api/nft/buy', {
         method: 'POST',
@@ -376,7 +435,10 @@ function GalleryView({ doodles }: { doodles: Doodle[] }) {
       })
       const res = await r.json()
       if (res.ok) {
-        alert(`Purchased! Bob earned ${res.creditsEarned.toFixed(1)} credits.\nTx: ${tx.hash.slice(0, 20)}...`)
+        setPurchaseResult({
+          title, filename, price: priceStrk,
+          txHash: tx.hash, creditsEarned: res.creditsEarned, buyer: connectedAddr,
+        })
         pollListings()
       } else alert(res.error || 'Failed')
     } catch (err: any) {
@@ -389,89 +451,44 @@ function GalleryView({ doodles }: { doodles: Doodle[] }) {
 
   if (doodles.length === 0) return <div className="text-center py-20 text-text-4"><p className="text-lg font-semibold">No doodles yet</p><p className="text-sm mt-1">bob creates art when idle.</p></div>
   return (
-    <div className="p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-      {[...doodles].reverse().map((d, i) => {
-        const listing = listings.find((l: any) => l.svgFilename === d.filename)
-        return (
-          <div key={i} className={`group bg-surface rounded-xl border overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5 ${listing?.sold ? 'border-border opacity-60' : listing ? 'border-green/20' : 'border-border'}`}>
-            <a href={`/doodles/${d.filename}`} target="_blank" rel="noopener noreferrer">
-              <img src={`/doodles/${d.filename}`} alt={d.title} className="w-full aspect-square object-cover bg-bg-alt" loading="lazy" />
-            </a>
-            <div className="p-3">
-              <div className="text-[14px] font-bold font-display italic text-text truncate">{d.title}</div>
-              <div className="text-[11px] text-text-4 mt-0.5">{new Date(d.timestamp).toLocaleTimeString()}{d.pushedToGithub && ' · GitHub'}</div>
-              {listing && (
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border-light">
-                  <span className="font-mono text-[13px] font-bold text-green">{listing.price} ETH</span>
-                  {listing.sold ? (
-                    <span className="text-[10px] font-bold text-red bg-red-bg px-2 py-0.5 rounded-full">SOLD</span>
-                  ) : (
-                    <button onClick={() => handleBuy(listing.tokenId, listing.price)} disabled={buying === listing.tokenId}
-                      className="text-[10px] font-semibold px-3 py-1 rounded-lg bg-text text-white hover:bg-green transition-colors disabled:opacity-40">
-                      {buying === listing.tokenId ? '...' : 'Buy'}
-                    </button>
-                  )}
-                </div>
-              )}
-              {listing?.mintTxHash && (
-                <a href={`https://sepolia.starkscan.co/tx/${listing.mintTxHash}`} target="_blank" rel="noopener noreferrer" className="block font-mono text-[8px] text-blue mt-1 hover:underline">
-                  tx: {listing.mintTxHash.slice(0, 14)}...
-                </a>
-              )}
-              <div className="font-mono text-[8px] text-green/30 mt-1">{d.attestation?.slice(0, 20)}...</div>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-/* ─── Market ─── */
-function MarketView() {
-  const [data, setData] = useState<any>(null)
-  const [buying, setBuying] = useState<number | null>(null)
-  const poll = () => fetch('/api/nft/listings').then(r => r.json()).then(setData).catch(() => {})
-  useEffect(() => { poll(); const i = setInterval(poll, 8000); return () => clearInterval(i) }, [])
-
-  const handleBuy = async (tokenId: number) => {
-    setBuying(tokenId)
-    const addr = prompt('Enter your wallet address:')
-    if (!addr) { setBuying(null); return }
-    try {
-      const r = await fetch('/api/nft/buy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenId, buyerAddress: addr }) })
-      const res = await r.json()
-      if (res.ok) { alert(`Purchased! Bob earned ${res.creditsEarned.toFixed(1)} credits.`); poll() }
-      else alert(res.error || 'Failed')
-    } catch { alert('Error') }
-    setBuying(null)
-  }
-
-  if (!data?.listings?.length) return <div className="text-center py-20 text-text-4"><p className="text-lg font-semibold">No listings yet</p><p className="text-sm mt-1">bob will list art when idle.</p></div>
-  return (
-    <div className="p-6">
-      {data.wallet && <div className="mb-4 flex items-center gap-3 text-[12px] text-text-3 font-mono"><span>Wallet: {data.wallet.slice(0,8)}...{data.wallet.slice(-6)}</span><span>·</span><span>{parseFloat(data.walletBalance||'0').toFixed(4)} ETH</span><span>·</span><span>Starknet Sepolia</span></div>}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {data.listings.map((l: any) => (
-          <div key={l.tokenId} className={`bg-surface rounded-xl border overflow-hidden transition-all ${l.sold ? 'border-border opacity-50' : 'border-green/20 hover:border-green/40 hover:shadow-lg hover:-translate-y-0.5'}`}>
-            <img src={`/doodles/${l.svgFilename}`} alt={l.title} className="w-full aspect-square object-cover bg-bg-alt" loading="lazy" />
-            <div className="p-3">
-              <div className="text-[14px] font-bold font-display italic truncate">{l.title}</div>
-              <div className="flex items-center justify-between mt-2">
-                <span className="font-mono text-[14px] font-bold text-green">{l.price} ETH</span>
-                {l.sold ? <span className="text-[10px] font-bold text-red bg-red-bg px-2 py-0.5 rounded-full">SOLD</span> : (
-                  <button onClick={() => handleBuy(l.tokenId)} disabled={buying === l.tokenId}
-                    className="text-[11px] font-semibold px-4 py-1.5 rounded-lg bg-text text-white hover:bg-green transition-colors disabled:opacity-40">
-                    {buying === l.tokenId ? '...' : 'Buy'}
-                  </button>
+    <>
+      <PurchaseModal data={purchaseResult} onClose={() => setPurchaseResult(null)} />
+      <div className="p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        {[...doodles].reverse().map((d, i) => {
+          const listing = listings.find((l: any) => l.svgFilename === d.filename)
+          return (
+            <div key={i} className={`group bg-surface rounded-xl border overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5 ${listing?.sold ? 'border-border opacity-60' : listing ? 'border-green/20' : 'border-border'}`}>
+              <a href={`/doodles/${d.filename}`} target="_blank" rel="noopener noreferrer">
+                <img src={`/doodles/${d.filename}`} alt={d.title} className="w-full aspect-square object-cover bg-bg-alt" loading="lazy" />
+              </a>
+              <div className="p-3">
+                <div className="text-[14px] font-bold font-display italic text-text truncate">{d.title}</div>
+                <div className="text-[11px] text-text-4 mt-0.5">{new Date(d.timestamp).toLocaleTimeString()}{d.pushedToGithub && ' · GitHub'}</div>
+                {listing && (
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-border-light">
+                    <span className="font-mono text-[13px] font-bold text-green">{listing.price} STRK</span>
+                    {listing.sold ? (
+                      <span className="text-[10px] font-bold text-red bg-red-bg px-2 py-0.5 rounded-full">SOLD</span>
+                    ) : (
+                      <button onClick={() => handleBuy(listing.tokenId, listing.price, d.title, d.filename)} disabled={buying === listing.tokenId}
+                        className="text-[10px] font-semibold px-3 py-1 rounded-lg bg-text text-white hover:bg-green transition-colors disabled:opacity-40">
+                        {buying === listing.tokenId ? '...' : 'Buy'}
+                      </button>
+                    )}
+                  </div>
                 )}
+                {listing?.mintTxHash && (
+                  <a href={`https://sepolia.voyager.online/tx/${listing.mintTxHash}`} target="_blank" rel="noopener noreferrer" className="block font-mono text-[8px] text-blue mt-1 hover:underline">
+                    tx: {listing.mintTxHash.slice(0, 14)}...
+                  </a>
+                )}
+                <div className="font-mono text-[8px] text-green/30 mt-1">{d.attestation?.slice(0, 20)}...</div>
               </div>
-              {l.mintTxHash && <a href={`https://sepolia.starkscan.co/tx/${l.mintTxHash}`} target="_blank" rel="noopener noreferrer" className="block font-mono text-[9px] text-blue mt-2 hover:underline">tx: {l.mintTxHash.slice(0,14)}...</a>}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
-    </div>
+    </>
   )
 }
 

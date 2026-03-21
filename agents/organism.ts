@@ -168,11 +168,4 @@ export class DigitalOrganism {
     console.log(`[ORGANISM] Balance at death: ${this.state.balance.toFixed(4)}`);
   }
 
-  getPrivateKey(): string {
-    return this.keypair.privateKey;
-  }
-
-  getPublicKey(): string {
-    return this.keypair.publicKey;
-  }
 }

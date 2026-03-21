@@ -129,8 +129,6 @@ export class Metabolism {
     const burnRate = COSTS.PASSIVE_BURN_PER_TICK / tickIntervalSec;
 
     // Earn rate: average over recent history
-    const recentSum = this.recentEarnings.reduce((s, e) => s + e, 0);
-    const earnWindow = Math.max(60, uptimeSec); // at least 60s window
     const earnRate = this.totalEarned > 0 ? this.totalEarned / uptimeSec : 0;
 
     const netRate = earnRate - burnRate - (this.totalSpent > 0 ? (this.totalSpent - this.totalEarned) / uptimeSec : 0);

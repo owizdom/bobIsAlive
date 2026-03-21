@@ -47,7 +47,10 @@ function generateDoodle(seed: string): { svg: string; title: string; description
   let shapes = "";
 
   const shapeCount = randInt(8, 25);
-  const doodleTypes = ["circles", "triangles", "squiggles", "blobs", "stars", "grid"];
+  const doodleTypes = [
+    "circles", "triangles", "squiggles", "blobs", "stars", "grid",
+    "pixels", "waves", "spirals", "constellation", "cells", "glitch",
+  ];
   const style = pick(doodleTypes);
 
   for (let i = 0; i < shapeCount; i++) {
@@ -121,6 +124,112 @@ function generateDoodle(seed: string): { svg: string; title: string; description
         shapes += `<rect x="${cx}" y="${cy}" width="${size}" height="${size}" fill="${color}" opacity="${opacity}" rx="${rand(0, 8).toFixed(0)}" transform="rotate(${rot} ${cx + size / 2} ${cy + size / 2})"/>`;
         break;
       }
+      case "pixels": {
+        // Pixel art clusters — chunky retro blocks
+        const gridSize = randInt(8, 20);
+        const blockSize = rand(12, 30);
+        for (let gx = 0; gx < gridSize; gx++) {
+          for (let gy = 0; gy < gridSize; gy++) {
+            if (Math.random() > 0.5) {
+              const px = cx - (gridSize * blockSize) / 2 + gx * blockSize;
+              const py = cy - (gridSize * blockSize) / 2 + gy * blockSize;
+              const pc = pick(palette);
+              shapes += `<rect x="${px}" y="${py}" width="${blockSize}" height="${blockSize}" fill="${pc}" opacity="${rand(0.4, 0.95).toFixed(2)}"/>`;
+            }
+          }
+        }
+        break;
+      }
+      case "waves": {
+        // Layered sine waves
+        const waveY = rand(100, h - 100);
+        const amp = rand(20, 80);
+        const freq = rand(0.005, 0.02);
+        const phase = rand(0, Math.PI * 2);
+        let d = `M0,${waveY}`;
+        for (let x = 0; x <= w; x += 4) {
+          const y = waveY + Math.sin(x * freq + phase + i * 0.5) * amp + Math.sin(x * freq * 2.3 + i) * (amp * 0.3);
+          d += ` L${x},${y.toFixed(1)}`;
+        }
+        const strokeW = rand(1.5, 5).toFixed(1);
+        shapes += `<path d="${d}" fill="none" stroke="${color}" stroke-width="${strokeW}" stroke-linecap="round" opacity="${opacity}"/>`;
+        break;
+      }
+      case "spirals": {
+        // Fibonacci-style spirals
+        let d = `M${cx},${cy}`;
+        const turns = rand(3, 8);
+        const growth = rand(1.5, 4);
+        const steps = randInt(60, 120);
+        for (let j = 0; j < steps; j++) {
+          const angle = (j / steps) * turns * Math.PI * 2;
+          const r2 = (j / steps) * growth * 60;
+          const sx = cx + Math.cos(angle) * r2;
+          const sy = cy + Math.sin(angle) * r2;
+          d += ` L${sx.toFixed(1)},${sy.toFixed(1)}`;
+        }
+        const strokeW = rand(1, 4).toFixed(1);
+        shapes += `<path d="${d}" fill="none" stroke="${color}" stroke-width="${strokeW}" stroke-linecap="round" opacity="${opacity}"/>`;
+        break;
+      }
+      case "constellation": {
+        // Connected dots like star maps
+        const nodeCount = randInt(3, 8);
+        const nodes: [number, number][] = [];
+        for (let j = 0; j < nodeCount; j++) {
+          nodes.push([cx + rand(-120, 120), cy + rand(-120, 120)]);
+        }
+        // Draw connections
+        for (let j = 0; j < nodes.length; j++) {
+          for (let k = j + 1; k < nodes.length; k++) {
+            if (Math.random() > 0.4) {
+              shapes += `<line x1="${nodes[j][0]}" y1="${nodes[j][1]}" x2="${nodes[k][0]}" y2="${nodes[k][1]}" stroke="${color}" stroke-width="0.8" opacity="${(parseFloat(opacity) * 0.5).toFixed(2)}"/>`;
+            }
+          }
+        }
+        // Draw nodes
+        for (const [nx, ny] of nodes) {
+          const nr = rand(3, 8);
+          shapes += `<circle cx="${nx}" cy="${ny}" r="${nr}" fill="${color}" opacity="${opacity}"/>`;
+          shapes += `<circle cx="${nx}" cy="${ny}" r="${nr * 2.5}" fill="none" stroke="${color}" stroke-width="0.5" opacity="${(parseFloat(opacity) * 0.2).toFixed(2)}"/>`;
+        }
+        break;
+      }
+      case "cells": {
+        // Organic cell-like structures with membranes
+        const cellR = rand(30, 90);
+        const membrane = randInt(6, 12);
+        let d = "";
+        for (let j = 0; j <= membrane; j++) {
+          const angle = (j / membrane) * Math.PI * 2;
+          const jitter = rand(0.7, 1.3);
+          const mx = cx + Math.cos(angle) * cellR * jitter;
+          const my = cy + Math.sin(angle) * cellR * jitter;
+          d += j === 0 ? `M${mx.toFixed(0)},${my.toFixed(0)}` : ` Q${(cx + Math.cos(angle - 0.3) * cellR * rand(0.8, 1.5)).toFixed(0)},${(cy + Math.sin(angle - 0.3) * cellR * rand(0.8, 1.5)).toFixed(0)} ${mx.toFixed(0)},${my.toFixed(0)}`;
+        }
+        shapes += `<path d="${d}Z" fill="${color}" opacity="${(parseFloat(opacity) * 0.3).toFixed(2)}"/>`;
+        shapes += `<path d="${d}Z" fill="none" stroke="${color}" stroke-width="${rand(1.5, 3).toFixed(1)}" opacity="${opacity}"/>`;
+        // Nucleus inside
+        const nucX = cx + rand(-cellR * 0.2, cellR * 0.2);
+        const nucY = cy + rand(-cellR * 0.2, cellR * 0.2);
+        shapes += `<circle cx="${nucX}" cy="${nucY}" r="${cellR * rand(0.15, 0.3)}" fill="${pick(palette)}" opacity="${(parseFloat(opacity) * 0.6).toFixed(2)}"/>`;
+        break;
+      }
+      case "glitch": {
+        // Horizontal glitch bars with offset colors
+        const barCount = randInt(3, 12);
+        for (let j = 0; j < barCount; j++) {
+          const by = rand(0, h);
+          const bh = rand(2, 30);
+          const bx = rand(-20, w * 0.3);
+          const bw = rand(w * 0.3, w * 1.2);
+          const gc = pick(palette);
+          const offset = rand(-15, 15);
+          shapes += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${gc}" opacity="${rand(0.15, 0.6).toFixed(2)}"/>`;
+          shapes += `<rect x="${bx + offset}" y="${by + rand(-3, 3)}" width="${bw * rand(0.3, 0.8)}" height="${bh * 0.6}" fill="${pick(palette)}" opacity="${rand(0.1, 0.4).toFixed(2)}"/>`;
+        }
+        break;
+      }
     }
   }
 
@@ -136,14 +245,26 @@ ${shapes}
 <text x="${w / 2}" y="${h - 20}" text-anchor="middle" fill="#334" font-family="monospace" font-size="10">organism:${seed.slice(0, 12)} | ${style}</text>
 </svg>`;
 
+  const prefixes = [
+    "mitosis", "membrane", "synapse", "nucleus", "cytoplasm",
+    "organelle", "flagella", "ribosome", "enzyme", "helix",
+    "cortex", "dendrite", "axon", "vesicle", "chromatin",
+  ];
+  const suffixes = [
+    "division", "pulse", "signal", "bloom", "mutation",
+    "drift", "cascade", "fission", "respiration", "oscillation",
+  ];
+  const prefix = pick(prefixes);
+  const suffix = pick(suffixes);
   const titles = [
-    `${style} dream #${randInt(100, 999)}`,
-    `untitled ${style} (${new Date().toISOString().slice(0, 10)})`,
-    `organism thought: ${style}`,
-    `survival doodle #${randInt(1, 500)}`,
-    `idle ${style} sketch`,
-    `generated while waiting to live`,
-    `${style} from the void`,
+    `${prefix} ${suffix} #${randInt(100, 999)}`,
+    `${prefix} under pressure`,
+    `${style}: cellular ${suffix}`,
+    `bob's ${prefix} dream`,
+    `survival ${suffix} #${randInt(1, 500)}`,
+    `metabolic ${style} — ${prefix}`,
+    `${prefix} at ${(100 - randInt(0, 99))}% vitality`,
+    `the ${prefix} remembers`,
   ];
 
   return {

@@ -298,7 +298,7 @@ app.get("/api/nft/listings", async (_req, res) => {
     enabled: isNFTEnabled(),
     wallet: getWalletAddress(),
     walletBalance: ethBal,
-    chain: "Base Sepolia",
+    chain: "Starknet Sepolia",
     listings: getListings(),
     available: getAvailableListings(),
   });
@@ -314,8 +314,8 @@ app.post("/api/nft/buy", async (req, res) => {
 
   // Credit the organism for the sale
   const ethPrice = parseFloat(listing.price);
-  const creditBonus = ethPrice * 10000; // Convert ETH price to credits (generous for demo)
-  organism.metabolism.earn(creditBonus, `NFT sale: "${listing.title}" for ${listing.price} ETH`, `nft-${tokenId}`);
+  const creditBonus = ethPrice * 100; // Convert STRK price to credits
+  organism.metabolism.earn(creditBonus, `NFT sale: "${listing.title}" for ${listing.price} STRK`, `nft-${tokenId}`);
 
   res.json({ ok: true, listing, creditsEarned: creditBonus });
 });
