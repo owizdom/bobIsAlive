@@ -1,24 +1,70 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Caveat:wght@400;600;700&display=swap');
+
+@theme {
+  --font-display: 'Playfair Display', 'Georgia', serif;
+  --font-accent: 'Caveat', cursive;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --color-bg: #f7f3ec;
+  --color-bg-alt: #f0ebe0;
+  --color-bg-hover: #ebe4d3;
+  --color-surface: #fdfaf4;
+  --color-border: #d4cdc0;
+  --color-border-light: #e8e2d6;
+
+  --color-text: #1c1917;
+  --color-text-2: #33302b;
+  --color-text-3: #78716c;
+  --color-text-4: #a8a29e;
+  --color-text-5: #d6d3d1;
+
+  --color-green: #0d7c66;
+  --color-green-bg: #e6f5f0;
+  --color-red: #be123c;
+  --color-red-bg: #ffe4e6;
+  --color-amber: #b45309;
+  --color-amber-bg: #fef3c7;
+  --color-blue: #1a5276;
+  --color-blue-bg: #dbeafe;
+  --color-purple: #5b3e96;
+  --color-purple-bg: #ede9fe;
+
+  --color-sidebar: #1c1917;
+  --color-sidebar-text: #a8a29e;
+  --color-sidebar-active: #e7e5e4;
+  --color-sidebar-hover: #292524;
+}
 
 * { box-sizing: border-box; }
-html { background: #050508; }
-body { margin: 0; background: #050508; color: #d0d8e8; -webkit-font-smoothing: antialiased; }
+html, body { margin: 0; background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); -webkit-font-smoothing: antialiased; line-height: 1.6; height: 100%; }
+
+/* Paper grain */
+body::before {
+  content: '';
+  position: fixed; inset: 0; opacity: 0.04; pointer-events: none; z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
 
 .orb {
-  width: 100px; height: 100px; border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #40ffb0, #0cbb76, #064a30);
-  box-shadow: 0 0 50px rgba(12,187,118,0.25), 0 0 100px rgba(12,187,118,0.08);
-  animation: heartbeat 1.5s ease-in-out infinite; transition: all 1s;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #5eead4, #0d9488, #064e3b);
+  box-shadow: 0 0 20px rgba(13,124,102,0.2);
+  animation: heartbeat 1.5s ease-in-out infinite; transition: all 0.8s;
 }
-.orb.working { animation-duration: 0.7s; box-shadow: 0 0 70px rgba(12,187,118,0.4); }
-.orb.warn { background: radial-gradient(circle at 35% 35%, #ffe066, #ffbf00, #8a6500); box-shadow: 0 0 50px rgba(255,191,0,0.25); }
-.orb.crit { background: radial-gradient(circle at 35% 35%, #ff8888, #ff4d61, #8a1020); box-shadow: 0 0 50px rgba(255,77,97,0.25); animation-duration: 0.4s; }
-.orb.dead { background: radial-gradient(circle at 35% 35%, #333, #1a1a1a); box-shadow: none; animation: none; }
+.orb.working { animation-duration: 0.7s; box-shadow: 0 0 30px rgba(13,124,102,0.4); }
+.orb.warn { background: radial-gradient(circle at 35% 35%, #fde68a, #b45309, #6b2e06); box-shadow: 0 0 20px rgba(180,83,9,0.2); }
+.orb.crit { background: radial-gradient(circle at 35% 35%, #fca5a5, #be123c, #6b0f1a); box-shadow: 0 0 20px rgba(190,18,60,0.2); animation-duration: 0.4s; }
+.orb.dead { background: radial-gradient(circle at 35% 35%, #a8a29e, #78716c); box-shadow: none; animation: none; }
+.orb-lg { width: 80px; height: 80px; }
 
-@keyframes heartbeat { 0%,100% { transform: scale(1) } 50% { transform: scale(1.07) } }
-@keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.25 } }
-@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+.thick-rule { height: 2.5px; background: var(--color-text); }
+.thin-rule { height: 1px; background: var(--color-border); }
 
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+@keyframes heartbeat { 0%,100% { transform: scale(1) } 50% { transform: scale(1.08) } }
+@keyframes pulse-soft { 0%,100% { opacity: 1 } 50% { opacity: 0.4 } }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }

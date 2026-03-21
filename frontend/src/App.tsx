@@ -1,171 +1,354 @@
-import { useState } from 'react'
-import { useHeartbeat, useOrganism, useTasks, useDoodles, useEarnings, useMonologue, submitTask } from './hooks/useOrganism'
-import type { Heartbeat, EarningsEntry, Task, Doodle } from './types'
+import { useState, useEffect } from 'react'
+import { useHeartbeat, useOrganism, useTasks, useDoodles, useMonologue, submitTask } from './hooks/useOrganism'
+import type { Heartbeat, Task, Doodle } from './types'
 import type { MonologueEntry } from './hooks/useOrganism'
 
-type Tab = 'brain' | 'gallery' | 'marketplace' | 'tasks'
-
-const TABS: { id: Tab; label: string; sublabel: string }[] = [
-  { id: 'brain', label: 'The Brain', sublabel: 'Live metabolism' },
-  { id: 'gallery', label: 'Gallery', sublabel: 'Doodle art' },
-  { id: 'marketplace', label: 'Marketplace', sublabel: 'Buy doodles' },
-  { id: 'tasks', label: 'Tasks', sublabel: 'Feed the organism' },
-]
+type View = 'brain' | 'gallery' | 'market' | 'tasks'
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('brain')
+  const [view, setView] = useState<View>('brain')
   const hb = useHeartbeat()
   const org = useOrganism()
   const { tasks, refresh } = useTasks()
   const doodles = useDoodles()
-  const earnings = useEarnings()
   const monologue = useMonologue()
-
   const alive = hb?.alive ?? true
   const balance = hb?.balance ?? 100
 
+  const orbClass = !alive ? 'orb dead' : (hb?.activity === 'working' || hb?.activity === 'self-work')
+    ? (balance < 10 ? 'orb working crit' : balance < 30 ? 'orb working warn' : 'orb working')
+    : (balance < 10 ? 'orb crit' : balance < 30 ? 'orb warn' : 'orb')
+
+  const navItems: { id: View; icon: string; label: string }[] = [
+    { id: 'brain', icon: '', label: 'Brain' },
+    { id: 'gallery', icon: '', label: 'Gallery' },
+    { id: 'market', icon: '', label: 'Market' },
+    { id: 'tasks', icon: '', label: 'Tasks' },
+  ]
+
   return (
-    <div className="h-screen flex flex-col bg-[#050508] text-[#d0d8e8]" style={{ fontFamily: "'Inter','SF Pro',-apple-system,system-ui,sans-serif" }}>
-      <Header hb={hb} org={org} />
-      <div className="h-[2px] bg-[#111]">
-        <div className="h-full transition-all duration-1000" style={{ width: `${Math.max(0,Math.min(100,balance))}%`, background: balance>30?'#0cbb76':balance>10?'#ffbf00':'#ff4d61' }} />
-      </div>
-      <nav className="bg-[#0a0b0f] border-b-2 border-[#111] px-6 sm:px-10">
-        <div className="flex items-stretch">
-          {TABS.map(({id,label,sublabel})=>(
-            <button key={id} onClick={()=>setTab(id)} className={`relative px-5 sm:px-7 py-3 transition-all group ${tab===id?'':'hover:bg-white/[0.02]'}`}>
-              {tab===id && <div className="absolute bottom-0 left-2 right-2 h-[3px] bg-[#0cbb76] rounded-full"/>}
-              <div className="flex items-center gap-2">
-                <span className={`font-semibold text-[15px] ${tab===id?'text-[#e8ecf4]':'text-[#556] group-hover:text-[#889]'}`}>{label}</span>
-                {id==='gallery'&&doodles.length>0&&<span className="text-[9px] font-bold text-[#050508] bg-[#a855f7] px-1.5 py-0.5 rounded-full">{doodles.length}</span>}
-                {id==='tasks'&&tasks.filter(t=>t.status==='completed').length>0&&<span className="text-[9px] font-bold text-[#050508] bg-[#0cbb76] px-1.5 py-0.5 rounded-full">{tasks.filter(t=>t.status==='completed').length}</span>}
-              </div>
-              <span className={`block text-[10px] font-medium uppercase tracking-widest mt-0.5 ${tab===id?'text-[#556]':'text-[#334]'}`}>{sublabel}</span>
+    <div className="h-screen flex bg-bg font-body text-text">
+      {/* ── Left sidebar (dark) ── */}
+      <div className="w-[220px] bg-sidebar flex flex-col shrink-0">
+        {/* Logo */}
+        <div className="px-5 py-5 border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <div className={orbClass} />
+            <div>
+              <div className="text-[16px] font-bold text-white tracking-tight font-display italic">bob</div>
+              <div className="text-[10px] text-sidebar-text font-mono">{alive ? 'alive' : 'dead'} · {Math.floor((hb?.uptime ?? 0) / 60)}m</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 px-3 py-3 space-y-0.5">
+          {navItems.map(n => (
+            <button key={n.id} onClick={() => setView(n.id)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-display font-semibold transition-all ${view === n.id ? 'bg-sidebar-hover text-sidebar-active' : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-active'}`}>
+              <span>{n.label}</span>
+              {n.id === 'gallery' && doodles.length > 0 && <span className="ml-auto text-[10px] font-mono text-green bg-green/10 px-1.5 py-0.5 rounded">{doodles.length}</span>}
+              {n.id === 'tasks' && tasks.filter(t => t.status === 'completed').length > 0 && <span className="ml-auto text-[10px] font-mono text-blue bg-blue/10 px-1.5 py-0.5 rounded">{tasks.filter(t => t.status === 'completed').length}</span>}
             </button>
           ))}
+        </nav>
+
+        {/* Vitals */}
+        <div className="px-4 py-4 border-t border-white/5 space-y-3">
+          <div className="text-[9px] font-mono text-sidebar-text uppercase tracking-[0.2em]">Vitals</div>
+          <VitalRow label="Balance" value={`${balance.toFixed(1)}`} unit="cr" color={balance > 30 ? 'text-green' : balance > 10 ? 'text-amber' : 'text-red'} />
+          <VitalRow label="TTD" value={hb?.ttd && hb.ttd > 0 ? `${Math.floor(hb.ttd / 60)}m` : (alive ? '∞' : '0')} color="text-amber" />
+          <VitalRow label="Burn" value={hb?.burnRate?.toFixed(3) ?? '0'} unit="/s" color="text-red" />
+          <VitalRow label="Earn" value={hb?.earnRate?.toFixed(3) ?? '0'} unit="/s" color="text-green" />
+          <VitalRow label="Tasks" value={String(hb?.tasksCompleted ?? 0)} />
+          <VitalRow label="Doodles" value={String(doodles.length)} color="text-purple" />
+          {/* Balance bar */}
+          <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${Math.max(0, Math.min(100, balance))}%`, background: balance > 30 ? '#10b981' : balance > 10 ? '#f59e0b' : '#ef4444' }} />
+          </div>
         </div>
-      </nav>
-      <div className="flex-1 grid grid-cols-[1fr_300px] min-h-0">
-        <main className="min-h-0 overflow-y-auto border-r border-[#111] p-6">
-          {tab==='brain'&&<BrainView hb={hb} earnings={earnings} monologue={monologue}/>}
-          {tab==='gallery'&&<GalleryView doodles={doodles}/>}
-          {tab==='marketplace'&&<MarketplaceView/>}
-          {tab==='tasks'&&<TasksView tasks={tasks} alive={alive} onRefresh={refresh}/>}
-        </main>
-        <aside className="min-h-0 overflow-y-auto p-4 space-y-3">
-          <Sidebar hb={hb} org={org} doodleCount={doodles.length}/>
-        </aside>
+
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-white/5">
+          <div className="text-[9px] font-mono text-sidebar-text space-y-1">
+            <div className="flex justify-between"><span>TEE</span><span className="text-green">{org?.tee?.teeMode ? 'Intel TDX' : 'Local'}</span></div>
+            <div className="flex justify-between"><span>LLM</span><span>{org?.llm?.model ?? '?'}</span></div>
+            <div className="flex justify-between"><span>ID</span><span>{org?.identity?.fingerprint?.slice(0, 10) ?? '--'}</span></div>
+          </div>
+          <a href="https://github.com/owizdom/bobIsAlive" target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center gap-2 text-[11px] text-sidebar-text hover:text-white transition-colors">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+            GitHub
+          </a>
+        </div>
       </div>
-      {!alive&&(
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#050508]/90 backdrop-blur-sm">
-          <h1 className="text-4xl font-black tracking-[8px] text-[#ff4d61]" style={{textShadow:'0 0 40px rgba(255,77,97,0.3)'}}>DECEASED</h1>
-          <p className="text-[#445] text-sm mt-2">Balance depleted. No human bailout.</p>
+
+      {/* ── Main content ── */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {/* Top bar */}
+        <div className="h-[52px] border-b border-border flex items-center justify-between px-6 bg-surface shrink-0">
+          <div className="flex items-center gap-3">
+            <h2 className="text-[17px] font-bold font-display italic">{navItems.find(n => n.id === view)?.label}</h2>
+            <span className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full ${alive ? 'bg-green-bg text-green' : 'bg-red-bg text-red'}`}>
+              {alive ? (hb?.activity === 'self-work' ? 'Creating art' : hb?.activity === 'working' ? 'Working' : 'Online') : 'Deceased'}
+            </span>
+          </div>
+          <div className="font-mono text-[12px] text-text-3">
+            EigenCompute TEE · Ed25519 · {org?.research?.enabled ? 'Tavily' : 'LLM'}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto bg-bg-alt">
+          {view === 'brain' && <BrainView hb={hb} monologue={monologue} />}
+          {view === 'gallery' && <GalleryView doodles={doodles} />}
+          {view === 'market' && <MarketView />}
+          {view === 'tasks' && <TasksView tasks={tasks} alive={alive} onRefresh={refresh} />}
+        </div>
+      </div>
+
+      {/* Death overlay */}
+      {hb && !hb.alive && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-md">
+          <div className="orb dead orb-lg mb-6" />
+          <h1 className="text-3xl font-bold text-red">Deceased</h1>
+          <p className="text-text-3 text-sm mt-2">Balance depleted. No human bailout.</p>
         </div>
       )}
     </div>
   )
 }
 
-function Header({hb,org:_org}:{hb:Heartbeat|null;org:any}) {
-  const alive=hb?.alive??true, balance=hb?.balance??100
-  const m=Math.floor((hb?.uptime??0)/60), s=Math.floor((hb?.uptime??0)%60)
+/* ─── Living Organism Canvas ─── */
+function OrganismCanvas({ alive, balance, activity }: { alive: boolean; balance: number; activity: string }) {
+  const canvasRef = useState<HTMLCanvasElement | null>(null)
+  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null)
+
+  useEffect(() => {
+    const el = document.getElementById('organism-canvas') as HTMLCanvasElement
+    if (!el) return
+    setCanvas(el)
+    const ctx = el.getContext('2d')
+    if (!ctx) return
+
+    const W = 300, H = 220
+    el.width = W * 2; el.height = H * 2
+    el.style.width = W + 'px'; el.style.height = H + 'px'
+    ctx.scale(2, 2)
+
+    let frame = 0
+    let animId: number
+
+    // Particles
+    const particles: { x: number; y: number; angle: number; radius: number; speed: number; size: number; opacity: number }[] = []
+    for (let i = 0; i < 30; i++) {
+      particles.push({
+        x: 0, y: 0,
+        angle: Math.random() * Math.PI * 2,
+        radius: 55 + Math.random() * 35,
+        speed: 0.003 + Math.random() * 0.008,
+        size: 1 + Math.random() * 2.5,
+        opacity: 0.2 + Math.random() * 0.5,
+      })
+    }
+
+    const draw = () => {
+      frame++
+      ctx.clearRect(0, 0, W, H)
+      const cx = W / 2, cy = H / 2 - 5
+      const t = frame * 0.02
+      const working = activity === 'working' || activity === 'self-work'
+      const pulseSpeed = working ? 0.06 : 0.025
+      const pulse = Math.sin(frame * pulseSpeed)
+
+      // Health color
+      const r = balance < 10 ? 239 : balance < 30 ? 245 : 16
+      const g = balance < 10 ? 68 : balance < 30 ? 158 : 185
+      const b2 = balance < 10 ? 68 : balance < 30 ? 11 : 129
+
+      if (!alive) {
+        // Dead — gray static blob
+        ctx.beginPath()
+        ctx.arc(cx, cy, 40, 0, Math.PI * 2)
+        ctx.fillStyle = '#9ca3af'
+        ctx.fill()
+        ctx.fillStyle = 'rgba(156,163,175,0.1)'
+        ctx.beginPath(); ctx.arc(cx, cy, 55, 0, Math.PI * 2); ctx.fill()
+        animId = requestAnimationFrame(draw)
+        return
+      }
+
+      // Outer glow rings
+      for (let i = 3; i >= 0; i--) {
+        const glowR = 50 + i * 15 + pulse * 4
+        const alpha = (0.03 - i * 0.006) * (working ? 1.8 : 1)
+        ctx.beginPath()
+        ctx.arc(cx, cy, glowR, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(${r},${g},${b2},${alpha})`
+        ctx.fill()
+      }
+
+      // Membrane — wobbly organic border
+      ctx.beginPath()
+      const membraneR = 48 + pulse * 3
+      for (let i = 0; i <= 64; i++) {
+        const a = (i / 64) * Math.PI * 2
+        const wobble = Math.sin(a * 3 + t * 2) * 3 + Math.sin(a * 5 + t * 1.3) * 2 + Math.sin(a * 7 + t * 0.7) * 1.5
+        const mr = membraneR + wobble * (working ? 1.5 : 1)
+        const mx = cx + Math.cos(a) * mr
+        const my = cy + Math.sin(a) * mr
+        if (i === 0) ctx.moveTo(mx, my); else ctx.lineTo(mx, my)
+      }
+      ctx.closePath()
+      ctx.strokeStyle = `rgba(${r},${g},${b2},0.25)`
+      ctx.lineWidth = 1.5
+      ctx.stroke()
+
+      // Inner blob — organic shape with noise
+      ctx.beginPath()
+      const blobR = 36 + pulse * 4
+      for (let i = 0; i <= 48; i++) {
+        const a = (i / 48) * Math.PI * 2
+        const n1 = Math.sin(a * 2 + t * 1.5) * 4
+        const n2 = Math.sin(a * 4 + t * 0.8) * 2
+        const n3 = Math.sin(a * 6 + t * 2.2) * 1.5
+        const br = blobR + n1 + n2 + n3
+        const bx = cx + Math.cos(a) * br
+        const by = cy + Math.sin(a) * br
+        if (i === 0) ctx.moveTo(bx, by); else ctx.lineTo(bx, by)
+      }
+      ctx.closePath()
+
+      // Gradient fill
+      const grad = ctx.createRadialGradient(cx - 10, cy - 10, 5, cx, cy, blobR + 5)
+      const lightR = Math.min(255, r + 80)
+      const lightG = Math.min(255, g + 60)
+      const lightB = Math.min(255, b2 + 40)
+      grad.addColorStop(0, `rgba(${lightR},${lightG},${lightB},0.9)`)
+      grad.addColorStop(0.5, `rgba(${r},${g},${b2},0.85)`)
+      grad.addColorStop(1, `rgba(${Math.floor(r*0.4)},${Math.floor(g*0.4)},${Math.floor(b2*0.4)},0.9)`)
+      ctx.fillStyle = grad
+      ctx.fill()
+
+      // Inner highlight
+      ctx.beginPath()
+      ctx.ellipse(cx - 8, cy - 12, 12, 8, -0.4, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(255,255,255,${0.15 + pulse * 0.05})`
+      ctx.fill()
+
+      // Nucleus
+      const nucR = 8 + Math.sin(t * 1.2) * 2
+      ctx.beginPath()
+      ctx.arc(cx + Math.sin(t * 0.3) * 3, cy + Math.cos(t * 0.4) * 3, nucR, 0, Math.PI * 2)
+      const nucGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, nucR)
+      nucGrad.addColorStop(0, `rgba(${lightR},${lightG},${lightB},0.6)`)
+      nucGrad.addColorStop(1, `rgba(${r},${g},${b2},0.3)`)
+      ctx.fillStyle = nucGrad
+      ctx.fill()
+
+      // Orbiting particles
+      particles.forEach(p => {
+        p.angle += p.speed * (working ? 2 : 1)
+        const pr = p.radius + Math.sin(t + p.angle * 3) * 5
+        p.x = cx + Math.cos(p.angle) * pr
+        p.y = cy + Math.sin(p.angle) * pr * 0.7
+        const pAlpha = p.opacity * (0.7 + Math.sin(t + p.angle) * 0.3)
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(${r},${g},${b2},${pAlpha})`
+        ctx.fill()
+      })
+
+      // Small floating organelles inside
+      for (let i = 0; i < 6; i++) {
+        const oa = t * 0.5 + i * 1.05
+        const or2 = 15 + Math.sin(t * 0.7 + i) * 8
+        const ox = cx + Math.cos(oa) * or2
+        const oy = cy + Math.sin(oa) * or2
+        ctx.beginPath()
+        ctx.arc(ox, oy, 2 + Math.sin(t + i) * 0.5, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(255,255,255,${0.15 + Math.sin(t * 2 + i) * 0.08})`
+        ctx.fill()
+      }
+
+      animId = requestAnimationFrame(draw)
+    }
+
+    draw()
+    return () => cancelAnimationFrame(animId)
+  }, [alive, balance, activity])
+
+  return <canvas id="organism-canvas" className="relative z-10" style={{ width: 300, height: 220 }} />
+}
+
+function VitalRow({ label, value, unit, color = 'text-sidebar-active' }: { label: string; value: string; unit?: string; color?: string }) {
   return (
-    <header>
-      <div className="h-[3px]" style={{background:alive?'#0cbb76':'#ff4d61'}}/>
-      <div className="bg-[#0a0b0f] border-b border-[#151820]">
-        <div className="px-6 sm:px-10 py-1.5 flex items-center justify-between border-b border-[#111] text-[10px] text-[#445] uppercase tracking-[0.2em]" style={{fontFamily:'monospace'}}>
-          <span>Digital Organism · Autonomous AI Agent · TEE-Attested</span>
-          <span className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${alive?'bg-[#0cbb76]/10 text-[#0cbb76]':'bg-[#ff4d61]/10 text-[#ff4d61]'}`}>
-            <span className="w-[5px] h-[5px] rounded-full bg-current" style={{animation:alive?'pulse 1.5s infinite':'none'}}/>
-            {alive?(hb?.activity==='working'?'Working':hb?.activity==='self-work'?'Creating art':'Alive'):'Dead'}
-          </span>
-        </div>
-        <div className="px-6 sm:px-10 py-4 flex items-end justify-between">
-          <div className="flex items-baseline gap-3">
-            <h1 className="text-[48px] sm:text-[56px] font-black leading-none tracking-tight"><span className="text-[#0cbb76]">bob</span> <span className="text-[#e8ecf4]">is alive</span></h1>
-            <a href="https://github.com/owizdom/bobIsAlive" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[11px] text-[#556] hover:text-[#aab] bg-[#111] px-3 py-1.5 rounded-md transition-colors" style={{fontFamily:'monospace'}}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-              GitHub
-            </a>
-          </div>
-          <div className="hidden md:flex flex-col items-end gap-1">
-            <div className="flex items-center gap-2"><span className="text-[11px] text-[#445] uppercase tracking-widest" style={{fontFamily:'monospace'}}>Built on</span><span className="text-[13px] font-bold text-[#0cbb76]" style={{fontFamily:'monospace'}}>EigenCompute</span></div>
-            <div className="flex items-center gap-4 text-[11px] text-[#445]" style={{fontFamily:'monospace'}}>
-              <span>Uptime: {m>0?`${m}m ${s}s`:`${s}s`}</span>
-              <span className="font-bold" style={{color:balance>30?'#0cbb76':balance>10?'#ffbf00':'#ff4d61'}}>{balance.toFixed(1)} credits</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </header>
+    <div className="flex items-center justify-between">
+      <span className="text-[10px] text-sidebar-text">{label}</span>
+      <span className={`text-[11px] font-mono font-semibold tabular-nums ${color}`}>{value}{unit && <span className="text-sidebar-text font-normal ml-0.5">{unit}</span>}</span>
+    </div>
   )
 }
 
-function BrainView({hb,earnings,monologue}:{hb:Heartbeat|null;earnings:EarningsEntry[];monologue:MonologueEntry[]}) {
-  const alive=hb?.alive??true
-  const TYPE_STYLES:Record<string,{label:string;color:string;prefix:string}>={
-    thought:{label:'thought',color:'text-[#a855f7]',prefix:'~'},
-    scan:{label:'scan',color:'text-[#1f73ff]',prefix:'>'},
-    earn:{label:'earned',color:'text-[#0cbb76]',prefix:'+'},
-    burn:{label:'burn',color:'text-[#ff4d61]',prefix:'-'},
-    doodle:{label:'creating',color:'text-[#ff8c00]',prefix:'*'},
-    nft:{label:'listed',color:'text-[#ffbf00]',prefix:'$'},
-    task:{label:'working',color:'text-[#1f73ff]',prefix:'>'},
-    improve:{label:'self-improve',color:'text-[#ffbf00]',prefix:'!'},
-    system:{label:'system',color:'text-[#556]',prefix:'#'},
-    survival:{label:'survival',color:'text-[#ff4d61]',prefix:'!'},
+/* ─── Brain ─── */
+function BrainView({ hb, monologue }: { hb: Heartbeat | null; monologue: MonologueEntry[] }) {
+  const balance = hb?.balance ?? 100
+  const alive = hb?.alive ?? true
+  const orbClass = !alive ? 'orb orb-lg dead' : (hb?.activity === 'working' || hb?.activity === 'self-work')
+    ? (balance < 10 ? 'orb orb-lg working crit' : balance < 30 ? 'orb orb-lg working warn' : 'orb orb-lg working')
+    : (balance < 10 ? 'orb orb-lg crit' : balance < 30 ? 'orb orb-lg warn' : 'orb orb-lg')
+
+  const COLORS: Record<string, string> = {
+    thought: 'text-purple', scan: 'text-text-3', earn: 'text-green', burn: 'text-red',
+    doodle: 'text-amber', nft: 'text-amber', task: 'text-blue', improve: 'text-purple',
+    system: 'text-text-4', survival: 'text-red',
   }
+  const BGS: Record<string, string> = { earn: 'bg-green-bg', doodle: 'bg-amber-bg', task: 'bg-blue-bg' }
+
   return (
     <div className="h-full flex flex-col">
-      {/* Header like Sovra */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-[3px] h-5 bg-[#0cbb76] rounded-full"/>
-          <span className="text-[18px] font-bold text-[#e8ecf4] italic">Internal Monologue</span>
-          <span className="text-[10px] text-[#445] uppercase tracking-wider" style={{fontFamily:'monospace'}}>{monologue.length} entries</span>
+      {/* Living organism animation */}
+      <div className="flex flex-col items-center py-8 bg-surface border-b border-border relative overflow-hidden">
+        <OrganismCanvas alive={alive} balance={balance} activity={hb?.activity ?? 'idle'} />
+        <div className="mt-3 font-mono text-[12px] text-text-3 tracking-wide relative z-10">
+          {alive ? ({ idle: 'Scanning for tasks...', scanning: 'Scanning...', working: 'Executing task', 'self-work': 'Creating doodle art' }[hb?.activity ?? 'idle'] ?? 'Active') : 'Offline'}
+        </div>
+        <div className="mt-1 font-mono text-[20px] font-bold tabular-nums relative z-10" style={{ color: balance > 30 ? '#10b981' : balance > 10 ? '#f59e0b' : '#ef4444' }}>
+          {balance.toFixed(2)} <span className="text-[12px] font-normal text-text-4">credits</span>
         </div>
       </div>
 
-      {/* Monologue stream — Sovra-style entries */}
-      <div className="flex-1 overflow-y-auto space-y-0">
-        {monologue.length===0&&<div className="text-[#334] py-8 text-center">Waiting for organism to think...</div>}
-        {[...monologue].reverse().map(entry=>{
-          const style=TYPE_STYLES[entry.type]||TYPE_STYLES.thought
-          const time=new Date(entry.timestamp)
-          const h=time.getHours().toString().padStart(2,'0')
-          const m=time.getMinutes().toString().padStart(2,'0')
-          const ampm=time.getHours()>=12?'PM':'AM'
-          return (
-            <div key={entry.id} className={`py-3 border-b border-[#111] ${entry.type==='earn'?'bg-[#0cbb76]/[0.03]':entry.type==='survival'?'bg-[#ff4d61]/[0.03]':''}`}>
-              <div className="flex items-start gap-4">
-                <div className="text-[11px] text-[#334] w-[60px] shrink-0 pt-0.5" style={{fontFamily:'monospace'}}>
-                  <span className="text-[#445]">{style.prefix}</span> {h}:{m}<br/><span className="text-[9px]">{ampm}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className={`text-[12px] font-semibold italic ${style.color}`}>{style.label}</span>
-                  <p className="text-[13px] text-[#b0bcc8] mt-0.5 leading-relaxed">{entry.text}</p>
-                </div>
-              </div>
+      {/* Monologue */}
+      <div className="flex-1 overflow-y-auto divide-y divide-border-light">
+        {monologue.length === 0 && <div className="text-center py-16 text-text-4 text-sm">Waiting for bob to think&hellip;</div>}
+        {[...monologue].reverse().map(entry => (
+          <div key={entry.id} className={`px-6 py-3 flex items-start gap-4 ${BGS[entry.type] || 'bg-surface'}`}>
+            <span className="font-mono text-[11px] text-text-4 w-[44px] shrink-0 tabular-nums pt-0.5">
+              {new Date(entry.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+            <div className="flex-1 min-w-0">
+              <span className={`font-accent text-[15px] font-semibold italic ${COLORS[entry.type] || 'text-text-3'}`}>{entry.type}</span>
+              <p className="text-[13px] text-text-2 mt-0.5 leading-relaxed">{entry.text}</p>
             </div>
-          )
-        })}
+          </div>
+        ))}
       </div>
     </div>
   )
 }
 
-function GalleryView({doodles}:{doodles:Doodle[]}) {
-  return doodles.length===0?(
-    <div className="text-center py-16 text-[#334]"><p className="text-lg">No doodles yet</p><p className="text-sm mt-1">The organism creates art when idle.</p></div>
-  ):(
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-      {[...doodles].reverse().map((d,i)=>(
-        <a key={i} href={`/doodles/${d.filename}`} target="_blank" rel="noopener noreferrer" className="group bg-[#0a0b0f] border border-[#151820] rounded-lg overflow-hidden hover:border-[#252830] hover:-translate-y-0.5 transition-all">
-          <img src={`/doodles/${d.filename}`} alt={d.title} className="w-full aspect-square object-cover bg-[#050508]" loading="lazy"/>
+/* ─── Gallery ─── */
+function GalleryView({ doodles }: { doodles: Doodle[] }) {
+  if (doodles.length === 0) return <div className="text-center py-20 text-text-4"><p className="text-lg font-semibold">No doodles yet</p><p className="text-sm mt-1">bob creates art when idle.</p></div>
+  return (
+    <div className="p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      {[...doodles].reverse().map((d, i) => (
+        <a key={i} href={`/doodles/${d.filename}`} target="_blank" rel="noopener noreferrer"
+          className="group bg-surface rounded-xl border border-border overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all">
+          <img src={`/doodles/${d.filename}`} alt={d.title} className="w-full aspect-square object-cover bg-bg-alt" loading="lazy" />
           <div className="p-3">
-            <div className="text-[12px] font-semibold text-[#aab]">{d.title}</div>
-            <div className="text-[10px] text-[#445] mt-0.5">{new Date(d.timestamp).toLocaleTimeString()}{d.pushedToGithub&&' · on GitHub'}</div>
-            <div className="text-[8px] text-[#0cbb76] mt-1 opacity-50" style={{fontFamily:'monospace'}}>{d.attestation?.slice(0,28)}...</div>
+            <div className="text-[14px] font-bold font-display italic text-text truncate">{d.title}</div>
+            <div className="text-[11px] text-text-4 mt-0.5">{new Date(d.timestamp).toLocaleTimeString()}{d.pushedToGithub && ' · GitHub'}</div>
+            <div className="font-mono text-[8px] text-green/30 mt-1">{d.attestation?.slice(0, 20)}...</div>
           </div>
         </a>
       ))}
@@ -173,158 +356,95 @@ function GalleryView({doodles}:{doodles:Doodle[]}) {
   )
 }
 
-function TasksView({tasks,alive,onRefresh}:{tasks:Task[];alive:boolean;onRefresh:()=>void}) {
-  const [type,setType]=useState('research')
-  const [input,setInput]=useState('')
-  const [submitting,setSubmitting]=useState(false)
-  const handleSubmit=async()=>{if(!input.trim()||input.length<3)return;setSubmitting(true);try{await submitTask(type,input.trim());setInput('');setTimeout(onRefresh,1000)}catch{};setSubmitting(false)}
-  return (
-    <div className="grid grid-cols-[320px_1fr] gap-6">
-      <div className="bg-[#0a0b0f] border border-[#151820] rounded-lg p-5">
-        <h3 className="text-[13px] font-semibold mb-3 text-[#aab]">Submit a Task</h3>
-        <select value={type} onChange={e=>setType(e.target.value)} className="w-full bg-[#0d0e14] border border-[#1a1d25] rounded-lg px-3 py-2.5 text-[12px] text-[#d0d8e8] outline-none focus:border-[#0cbb76] mb-3">
-          <option value="review">Code Review (+5 cr)</option><option value="research">Research (+8 cr)</option><option value="summarize">Summarize (+3 cr)</option><option value="analyze">Analyze (+6 cr)</option>
-        </select>
-        <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder="Paste code, ask a question, or submit text..." className="w-full bg-[#0d0e14] border border-[#1a1d25] rounded-lg px-3 py-2.5 text-[11px] text-[#d0d8e8] outline-none focus:border-[#0cbb76] h-32 resize-y mb-3" style={{fontFamily:"'SF Mono','Fira Code',monospace"}}/>
-        <button onClick={handleSubmit} disabled={submitting||!alive||input.trim().length<3} className="w-full bg-[#0cbb76] text-[#050508] font-bold text-[13px] py-3 rounded-lg hover:bg-[#10d888] transition-all disabled:opacity-40 disabled:cursor-not-allowed">{submitting?'Submitting...':'Submit Task'}</button>
-      </div>
-      <div className="space-y-3">
-        {tasks.length===0&&<div className="text-center py-12 text-[#334]">No tasks yet. Submit one to keep the organism alive.</div>}
-        {tasks.slice(0,15).map(t=>(
-          <div key={t.id} className="bg-[#0a0b0f] border border-[#151820] rounded-lg p-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className={`text-[11px] font-bold uppercase tracking-wider ${t.type==='review'?'text-[#ff8c00]':t.type==='research'?'text-[#1f73ff]':t.type==='summarize'?'text-[#a855f7]':'text-[#ffbf00]'}`}>{t.type}</span>
-              <span className={`text-[9px] font-semibold px-2 py-0.5 rounded ${t.status==='completed'?'bg-[#0cbb76]/10 text-[#0cbb76]':t.status==='working'?'bg-[#1f73ff]/10 text-[#1f73ff]':t.status==='failed'?'bg-[#ff4d61]/10 text-[#ff4d61]':'bg-[#ffbf00]/10 text-[#ffbf00]'}`}>{t.status}</span>
-            </div>
-            <div className="text-[11px] text-[#667] mb-2">{t.input.slice(0,120)}{t.input.length>120?'...':''}</div>
-            {t.result&&<div className="text-[11px] text-[#99a8b8] bg-[#08090d] rounded-md p-3 max-h-[200px] overflow-y-auto whitespace-pre-wrap leading-relaxed">{t.result}</div>}
-            {t.status==='completed'&&<div className="text-[10px] text-[#0cbb76] mt-2">+{t.reward} cr earned · {t.tokensUsed} tokens · cost {(t.costIncurred??0).toFixed(3)} cr</div>}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/* ─── Marketplace View ─── */
-function MarketplaceView() {
+/* ─── Market ─── */
+function MarketView() {
   const [data, setData] = useState<any>(null)
-  const [buying, setBuying] = useState<number|null>(null)
-
-  const poll = () => fetch('/api/nft/listings').then(r=>r.json()).then(setData).catch(()=>{})
-  useState(() => { poll(); const i = setInterval(poll, 8000); return () => clearInterval(i) })
-
-  // Also poll on mount
-  if (!data) poll()
+  const [buying, setBuying] = useState<number | null>(null)
+  const poll = () => fetch('/api/nft/listings').then(r => r.json()).then(setData).catch(() => {})
+  useEffect(() => { poll(); const i = setInterval(poll, 8000); return () => clearInterval(i) }, [])
 
   const handleBuy = async (tokenId: number) => {
     setBuying(tokenId)
+    const addr = prompt('Enter your wallet address:')
+    if (!addr) { setBuying(null); return }
     try {
-      const addr = prompt('Enter your wallet address to buy this doodle:')
-      if (!addr) { setBuying(null); return }
-      const res = await fetch('/api/nft/buy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tokenId, buyerAddress: addr }),
-      })
-      const result = await res.json()
-      if (result.ok) { alert(`Purchased! Organism earned ${result.creditsEarned.toFixed(1)} credits.`); poll() }
-      else alert(result.error || 'Purchase failed')
+      const r = await fetch('/api/nft/buy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenId, buyerAddress: addr }) })
+      const res = await r.json()
+      if (res.ok) { alert(`Purchased! Bob earned ${res.creditsEarned.toFixed(1)} credits.`); poll() }
+      else alert(res.error || 'Failed')
     } catch { alert('Error') }
     setBuying(null)
   }
 
-  if (!data) return <div className="text-center py-12 text-[#334]">Loading marketplace...</div>
-
+  if (!data?.listings?.length) return <div className="text-center py-20 text-text-4"><p className="text-lg font-semibold">No listings yet</p><p className="text-sm mt-1">bob will list art when idle.</p></div>
   return (
-    <div>
-      {/* Marketplace header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-bold text-[#e8ecf4]">Doodle Marketplace</h2>
-          <p className="text-[11px] text-[#556] mt-1">The organism creates art and lists it for sale. Every purchase extends its life.</p>
-        </div>
-        <div className="text-right">
-          <div className="text-[10px] text-[#445] uppercase tracking-wider" style={{fontFamily:'monospace'}}>Organism Wallet</div>
-          <div className="text-[11px] text-[#0cbb76]" style={{fontFamily:'monospace'}}>{data.wallet?.slice(0,6)}...{data.wallet?.slice(-4)}</div>
-          <div className="text-[11px] text-[#778]" style={{fontFamily:'monospace'}}>{parseFloat(data.walletBalance || '0').toFixed(4)} ETH</div>
-          <div className="text-[9px] text-[#445]">Base Sepolia</div>
-        </div>
-      </div>
-
-      {/* Listings */}
-      {(!data.listings || data.listings.length === 0) ? (
-        <div className="text-center py-16 text-[#334]">
-          <p className="text-lg">No doodles listed yet</p>
-          <p className="text-sm mt-1">The organism will create and list art when idle.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {data.listings.map((l: any) => (
-            <div key={l.tokenId} className={`bg-[#0a0b0f] border rounded-lg overflow-hidden transition-all ${l.sold ? 'border-[#151820] opacity-60' : 'border-[#0cbb76]/20 hover:border-[#0cbb76]/40 hover:-translate-y-0.5'}`}>
-              <img src={`/doodles/${l.svgFilename}`} alt={l.title} className="w-full aspect-square object-cover bg-[#050508]" loading="lazy"/>
-              <div className="p-3">
-                <div className="text-[12px] font-semibold text-[#aab]">{l.title}</div>
-                <div className="flex items-center justify-between mt-2">
-                  <div className="text-[14px] font-bold text-[#0cbb76]">{l.price} ETH</div>
-                  {l.sold ? (
-                    <span className="text-[9px] font-semibold px-2 py-0.5 rounded bg-[#ff4d61]/10 text-[#ff4d61]">SOLD</span>
-                  ) : (
-                    <button
-                      onClick={() => handleBuy(l.tokenId)}
-                      disabled={buying === l.tokenId}
-                      className="text-[10px] font-bold px-3 py-1 rounded bg-[#0cbb76] text-[#050508] hover:bg-[#10d888] transition-all disabled:opacity-40"
-                    >
-                      {buying === l.tokenId ? 'Buying...' : 'Buy'}
-                    </button>
-                  )}
-                </div>
-                {l.mintTxHash && (
-                  <a href={`https://sepolia.basescan.org/tx/${l.mintTxHash}`} target="_blank" rel="noopener noreferrer" className="block text-[8px] text-[#1f73ff] mt-2 hover:underline" style={{fontFamily:'monospace'}}>
-                    tx: {l.mintTxHash.slice(0, 14)}...
-                  </a>
+    <div className="p-6">
+      {data.wallet && <div className="mb-4 flex items-center gap-3 text-[12px] text-text-3 font-mono"><span>Wallet: {data.wallet.slice(0,8)}...{data.wallet.slice(-6)}</span><span>·</span><span>{parseFloat(data.walletBalance||'0').toFixed(4)} ETH</span><span>·</span><span>Base Sepolia</span></div>}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        {data.listings.map((l: any) => (
+          <div key={l.tokenId} className={`bg-surface rounded-xl border overflow-hidden transition-all ${l.sold ? 'border-border opacity-50' : 'border-green/20 hover:border-green/40 hover:shadow-lg hover:-translate-y-0.5'}`}>
+            <img src={`/doodles/${l.svgFilename}`} alt={l.title} className="w-full aspect-square object-cover bg-bg-alt" loading="lazy" />
+            <div className="p-3">
+              <div className="text-[14px] font-bold font-display italic truncate">{l.title}</div>
+              <div className="flex items-center justify-between mt-2">
+                <span className="font-mono text-[14px] font-bold text-green">{l.price} ETH</span>
+                {l.sold ? <span className="text-[10px] font-bold text-red bg-red-bg px-2 py-0.5 rounded-full">SOLD</span> : (
+                  <button onClick={() => handleBuy(l.tokenId)} disabled={buying === l.tokenId}
+                    className="text-[11px] font-semibold px-4 py-1.5 rounded-lg bg-text text-white hover:bg-green transition-colors disabled:opacity-40">
+                    {buying === l.tokenId ? '...' : 'Buy'}
+                  </button>
                 )}
-                <div className="text-[8px] text-[#0cbb76]/40 mt-1" style={{fontFamily:'monospace'}}>{l.attestation?.slice(0, 24)}...</div>
               </div>
+              {l.mintTxHash && <a href={`https://sepolia.basescan.org/tx/${l.mintTxHash}`} target="_blank" rel="noopener noreferrer" className="block font-mono text-[9px] text-blue mt-2 hover:underline">tx: {l.mintTxHash.slice(0,14)}...</a>}
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 
-function Sidebar({hb,org,doodleCount}:{hb:Heartbeat|null;org:any;doodleCount:number}) {
-  const balance=hb?.balance??100, ttd=hb?.ttd??-1
-  const MC=({label,value,color='#d0d8e8',sub}:{label:string;value:string;color?:string;sub?:string})=>(
-    <div className="bg-[#0a0b0f] border border-[#151820] rounded-lg p-3">
-      <div className="text-[9px] font-semibold uppercase tracking-[1.5px] text-[#445] mb-1">{label}</div>
-      <div className="text-[20px] font-bold" style={{color,fontVariantNumeric:'tabular-nums'}}>{value}</div>
-      {sub&&<div className="text-[9px] text-[#334] mt-0.5">{sub}</div>}
-    </div>
-  )
+/* ─── Tasks ─── */
+function TasksView({ tasks, alive, onRefresh }: { tasks: Task[]; alive: boolean; onRefresh: () => void }) {
+  const [type, setType] = useState('research')
+  const [input, setInput] = useState('')
+  const [sub, setSub] = useState(false)
+  const go = async () => { if (!input.trim() || input.length < 3) return; setSub(true); try { await submitTask(type, input.trim()); setInput(''); setTimeout(onRefresh, 1000) } catch {}; setSub(false) }
+
   return (
-    <>
-      <MC label="Balance" value={balance.toFixed(2)} color={balance>30?'#0cbb76':balance>10?'#ffbf00':'#ff4d61'} sub="credits"/>
-      <MC label="Time to Death" value={ttd>0?`${Math.floor(ttd/60)}m ${Math.floor(ttd%60)}s`:(hb?.alive?'STABLE':'DEAD')} color="#ffbf00"/>
-      <MC label="Burn Rate" value={hb?.burnRate?.toFixed(4)??'0'} color="#ff4d61" sub="cr/sec"/>
-      <MC label="Earn Rate" value={hb?.earnRate?.toFixed(4)??'0'} color="#0cbb76" sub="cr/sec"/>
-      <MC label="Tasks Done" value={String(hb?.tasksCompleted??0)}/>
-      <MC label="Doodles" value={String(doodleCount)} color="#a855f7"/>
-      <MC label="Efficiency" value={`${((org?.metabolism?.efficiency??0)*100).toFixed(0)}%`} color="#ffbf00"/>
-      <MC label="Identity" value={org?.identity?.fingerprint??'--'}/>
-      <div className="space-y-1.5 mt-2">
-        {[
-          {l:org?.tee?.teeMode?'Intel TDX Enclave':'Local Dev Mode',w:!org?.tee?.teeMode},
-          {l:'Ed25519 Signatures',w:false},
-          {l:org?.research?.enabled?'Tavily Research':'LLM Only',w:!org?.research?.enabled},
-          {l:`LLM: ${org?.llm?.provider??'?'}/${org?.llm?.model??'?'}`,w:false},
-        ].map((b,i)=>(
-          <div key={i} className={`flex items-center gap-2 text-[10px] font-medium ${b.w?'text-[#ffbf00]':'text-[#0cbb76]'}`}>
-            <span className="w-[4px] h-[4px] rounded-full bg-current" style={{boxShadow:'0 0 4px currentColor'}}/>{b.l}
+    <div className="p-6">
+      {/* Submit form */}
+      <div className="bg-surface rounded-xl border border-border p-5 mb-6 max-w-xl">
+        <h3 className="text-[15px] font-bold font-display italic mb-1">Submit a Task</h3>
+        <p className="text-[12px] text-text-3 mb-4">Every completed task earns bob credits and extends its life.</p>
+        <select value={type} onChange={e => setType(e.target.value)} className="w-full bg-bg-alt border border-border rounded-lg px-3 py-2.5 text-[13px] outline-none focus:border-green focus:ring-1 focus:ring-green/20 mb-3">
+          <option value="review">Code Review (+5 cr)</option><option value="research">Research (+8 cr)</option><option value="summarize">Summarize (+3 cr)</option><option value="analyze">Analyze (+6 cr)</option>
+        </select>
+        <textarea value={input} onChange={e => setInput(e.target.value)} placeholder="Paste code, ask a question, or submit text..."
+          className="w-full bg-bg-alt border border-border rounded-lg px-3 py-2.5 text-[12px] font-mono outline-none focus:border-green focus:ring-1 focus:ring-green/20 h-28 resize-y mb-3" />
+        <button onClick={go} disabled={sub || !alive || input.trim().length < 3}
+          className="w-full bg-text text-white font-semibold text-[13px] py-2.5 rounded-lg hover:bg-green transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+          {sub ? 'Submitting...' : 'Submit Task'}
+        </button>
+      </div>
+
+      {/* Results */}
+      <div className="space-y-3">
+        {tasks.length === 0 && <div className="text-center py-8 text-text-4 text-sm">No tasks yet.</div>}
+        {tasks.slice(0, 15).map(t => (
+          <div key={t.id} className="bg-surface rounded-xl border border-border p-4">
+            <div className="flex justify-between items-center mb-2">
+              <div className="flex items-center gap-2">
+                <span className={`font-mono text-[10px] font-bold uppercase tracking-wider ${t.type === 'review' ? 'text-amber' : t.type === 'research' ? 'text-blue' : t.type === 'summarize' ? 'text-purple' : 'text-amber'}`}>{t.type}</span>
+              </div>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${t.status === 'completed' ? 'bg-green-bg text-green' : t.status === 'working' ? 'bg-blue-bg text-blue' : t.status === 'failed' ? 'bg-red-bg text-red' : 'bg-amber-bg text-amber'}`}>{t.status}</span>
+            </div>
+            <div className="text-[13px] text-text-2 mb-2">{t.input.slice(0, 150)}{t.input.length > 150 ? '...' : ''}</div>
+            {t.result && <div className="text-[12px] text-text-2 bg-bg-alt rounded-lg p-3 max-h-[250px] overflow-y-auto whitespace-pre-wrap leading-relaxed font-mono border border-border-light">{t.result}</div>}
+            {t.status === 'completed' && <div className="font-mono text-[10px] text-green font-semibold mt-2">+{t.reward} cr · {t.tokensUsed} tokens</div>}
           </div>
         ))}
       </div>
-    </>
+    </div>
   )
 }
