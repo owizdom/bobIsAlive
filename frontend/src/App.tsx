@@ -524,7 +524,7 @@ function BrainView({ hb, monologue }: { hb: Heartbeat | null; monologue: Monolog
   const COLORS: Record<string, string> = {
     thought: 'text-purple', scan: 'text-text-3', earn: 'text-green', burn: 'text-red',
     doodle: 'text-amber', nft: 'text-amber', task: 'text-blue', improve: 'text-purple',
-    system: 'text-text-4', survival: 'text-red', reading: 'text-blue', contemplating: 'text-purple',
+    system: 'text-text-4', survival: 'text-red', reading: 'text-blue', contemplating: 'text-purple', chain: 'text-green',
   }
   const BGS: Record<string, string> = { earn: 'bg-green-bg', doodle: 'bg-amber-bg', task: 'bg-blue-bg' }
 

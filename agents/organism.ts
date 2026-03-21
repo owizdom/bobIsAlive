@@ -19,6 +19,8 @@ import { emit, getRandomThought, getDynamicThought, getMood, getTaskReflection, 
 import type { ThoughtContext } from "./monologue";
 import { getDoodleLog } from "./self-work";
 import { fetchBiologyNews, getNextTopic } from "./content-pipeline";
+import { chainTick, chainDeath } from "./chain";
+import { getListings } from "./nft";
 import type { NewsItem } from "./content-pipeline";
 import type { OrganismState, ActivityState } from "./organism-types";
 import { COSTS } from "./organism-types";
@@ -91,6 +93,13 @@ export class DigitalOrganism {
 
     // 3. Sync state from metabolism
     this.syncState();
+
+    // 3.5. On-chain survival actions (every ~60s, fire-and-forget)
+    if (this.state.tickCount % 12 === 0) {
+      const soldListings = getListings().filter(l => l.sold);
+      const strkEarned = soldListings.reduce((sum, l) => sum + parseFloat(l.price || "0"), 0);
+      chainTick(this.state.balance, this.metabolism, strkEarned).catch(() => {});
+    }
 
     // Emit periodic thoughts with dynamic context
     if (this.state.tickCount % 4 === 0) {
@@ -262,6 +271,9 @@ export class DigitalOrganism {
     for (const line of deathWords) {
       emit("survival", line);
     }
+
+    // On-chain death certificate
+    chainDeath().catch(() => {});
 
     console.log(`\n[ORGANISM] ████ DECEASED ████`);
     console.log(`[ORGANISM] Lived: ${lifespan.toFixed(0)}s | Earned: ${this.state.totalEarned.toFixed(2)} | Tasks: ${this.state.tasksCompleted}`);

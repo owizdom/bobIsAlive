@@ -69,6 +69,9 @@ export function initNFT(): { enabled: boolean; address: string } {
   }
 }
 
+export function getStarkAccount(): any { return starkAccount; }
+export function getStarkProvider(): any { return starkProvider; }
+
 export function isNFTEnabled(): boolean {
   return chainEnabled;
 }

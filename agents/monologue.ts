@@ -4,7 +4,7 @@
  * doing, and feeling in real-time.
  */
 
-export type EventType = "thought" | "scan" | "earn" | "burn" | "doodle" | "nft" | "task" | "improve" | "system" | "survival" | "reading" | "contemplating";
+export type EventType = "thought" | "scan" | "earn" | "burn" | "doodle" | "nft" | "task" | "improve" | "system" | "survival" | "reading" | "contemplating" | "chain";
 
 export interface MonologueEntry {
   id: number;

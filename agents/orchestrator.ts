@@ -30,6 +30,7 @@ import { getRecentEntries } from "./monologue";
 import { initNFT, isNFTEnabled, getWalletAddress, getWalletBalance, getListings, getAvailableListings, buyDoodle } from "./nft";
 import { TASK_REWARDS } from "./organism-types";
 import { getNewsCache } from "./content-pipeline";
+import { initChain, getChainState } from "./chain";
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -119,6 +120,9 @@ initResearch();
 
 // ── NFT / On-Chain ────────────────────────────────────────────────────────────
 const nftState = initNFT();
+
+// ── On-Chain Survival ─────────────────────────────────────────────────────────
+initChain();
 
 // ── Organism ──────────────────────────────────────────────────────────────────
 
@@ -295,6 +299,11 @@ app.get("/api/improvements", (_req, res) => {
 // What bob is reading
 app.get("/api/news", (_req, res) => {
   res.json(getNewsCache());
+});
+
+// On-chain survival state
+app.get("/api/chain", (_req, res) => {
+  res.json(getChainState());
 });
 
 // ── NFT Marketplace ───────────────────────────────────────────────────────────
