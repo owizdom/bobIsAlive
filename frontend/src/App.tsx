@@ -68,9 +68,10 @@ export default function App() {
         {/* Footer */}
         <div className="px-4 py-3 border-t border-white/5">
           <div className="text-[9px] font-mono text-sidebar-text space-y-1">
-            <div className="flex justify-between"><span>TEE</span><span className="text-green">{org?.tee?.teeMode ? 'Intel TDX' : 'Local'}</span></div>
+            <div className="flex justify-between"><span>TEE</span><a href="https://verify-sepolia.eigencloud.xyz/app/0xeE4d468A50E1B693CC34C96c9518Ee5cB7920E7F" target="_blank" rel="noopener noreferrer" className="text-green hover:underline">EigenCompute</a></div>
             <div className="flex justify-between"><span>LLM</span><span>{org?.llm?.model ?? '?'}</span></div>
             <div className="flex justify-between"><span>ID</span><span>{org?.identity?.fingerprint?.slice(0, 10) ?? '--'}</span></div>
+            <div className="flex justify-between"><span>Provenance</span><span className="text-green">Verified</span></div>
           </div>
           <a href="https://github.com/owizdom/bobIsAlive" target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center gap-2 text-[11px] text-sidebar-text hover:text-white transition-colors">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
@@ -113,7 +114,7 @@ export default function App() {
               <span className="text-[12px] font-mono font-semibold text-text">{balance.toFixed(1)}</span>
               <span className="text-[10px] text-text-4">credits</span>
             </div>
-            <a href={`https://sepolia.voyager.online/contract/${org?.nft?.wallet || ''}`} target="_blank" rel="noopener noreferrer"
+            <a href="https://verify-sepolia.eigencloud.xyz/app/0xeE4d468A50E1B693CC34C96c9518Ee5cB7920E7F" target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-bg-alt hover:border-blue/30 transition-colors">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
               <span className="text-[11px] font-semibold text-text">Verify</span>
