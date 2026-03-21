@@ -11,7 +11,14 @@
  */
 
 import dotenv from "dotenv";
+import fs from "fs";
 dotenv.config();
+
+// Auto-detect EigenCompute TEE environment
+const KMS_KEY_PATH = "/usr/local/bin/kms-signing-public-key.pem";
+if (!process.env.EIGENCOMPUTE_INSTANCE_ID && fs.existsSync(KMS_KEY_PATH)) {
+  process.env.EIGENCOMPUTE_INSTANCE_ID = "eigencompute-tee";
+}
 
 import express from "express";
 import cors from "cors";
