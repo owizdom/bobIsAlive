@@ -4,7 +4,9 @@
   "description": "An autonomous AI agent inside an EigenCompute TEE that must earn credits to pay for its own compute. If its balance hits zero, it dies.",
   "main": "dist/agents/orchestrator.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.json",
+    "build:frontend": "cd frontend && npm run build",
+    "build:all": "npm run build && npm run build:frontend",
     "start": "node dist/agents/orchestrator.js",
     "dev": "tsx agents/orchestrator.ts",
     "supervise": "bash scripts/supervise-swarm.sh"

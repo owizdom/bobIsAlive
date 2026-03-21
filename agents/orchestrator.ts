@@ -143,15 +143,22 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve dashboard
-let dashboardDir = path.join(process.cwd(), "dashboard");
+// Serve frontend — React build first, fallback to simple dashboard
+let dashboardDir = path.join(process.cwd(), "frontend", "dist");
+if (!fs.existsSync(path.join(dashboardDir, "index.html"))) {
+  dashboardDir = path.join(process.cwd(), "dashboard");
+}
 if (!fs.existsSync(path.join(dashboardDir, "index.html"))) {
   dashboardDir = path.join(__dirname, "..", "..", "dashboard");
 }
 app.use(express.static(dashboardDir));
 app.use("/doodles", express.static(path.join(process.cwd(), "doodles")));
 const dashboardIndex = path.join(dashboardDir, "index.html");
-app.get(["/", "/dashboard", "/dashboard/"], (_req, res) => res.sendFile(dashboardIndex));
+// SPA fallback for React Router
+app.get("*", (req, res, next) => {
+  if (req.path.startsWith("/api") || req.path.startsWith("/doodles") || req.path.startsWith("/health")) return next();
+  res.sendFile(dashboardIndex);
+});
 
 // ── API Routes ────────────────────────────────────────────────────────────────
 
