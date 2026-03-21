@@ -28,6 +28,7 @@ import { getDoodleLog, getImprovementLog } from "./self-work";
 import { getRecentEntries } from "./monologue";
 import { initNFT, isNFTEnabled, getWalletAddress, getWalletBalance, getListings, getAvailableListings, buyDoodle } from "./nft";
 import { TASK_REWARDS } from "./organism-types";
+import { getNewsCache } from "./content-pipeline";
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -287,6 +288,11 @@ app.get("/api/doodles", (_req, res) => {
 // Self-improvement log
 app.get("/api/improvements", (_req, res) => {
   res.json(getImprovementLog());
+});
+
+// What bob is reading
+app.get("/api/news", (_req, res) => {
+  res.json(getNewsCache());
 });
 
 // ── NFT Marketplace ───────────────────────────────────────────────────────────

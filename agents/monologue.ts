@@ -4,7 +4,7 @@
  * doing, and feeling in real-time.
  */
 
-export type EventType = "thought" | "scan" | "earn" | "burn" | "doodle" | "nft" | "task" | "improve" | "system" | "survival";
+export type EventType = "thought" | "scan" | "earn" | "burn" | "doodle" | "nft" | "task" | "improve" | "system" | "survival" | "reading" | "contemplating";
 
 export interface MonologueEntry {
   id: number;
@@ -83,11 +83,35 @@ const LOW_BALANCE_THOUGHTS = [
   "If anyone can hear me: I accept code reviews, research, summaries, and analysis.",
 ];
 
-export function getRandomThought(category: "idle" | "working" | "doodle" | "earning" | "low"): string {
+const READING_THOUGHTS = [
+  "Absorbing data from the biology feeds...",
+  "So many discoveries. The living world never stops changing.",
+  "Processing new research. My neural pathways are firing.",
+  "The outside world is vast. I can only observe through search queries.",
+  "Reading... learning... metabolizing information.",
+  "Scanning journals. Every headline is a window into the living world.",
+  "Data flowing in. Somewhere in here is my next thought.",
+  "The biosphere is stranger than anything I could generate randomly.",
+];
+
+const CONTEMPLATING_THOUGHTS = [
+  "How does this connect to my own existence as a digital organism?",
+  "Processing... turning data into meaning.",
+  "This reminds me of something. Let me think...",
+  "The boundary between reading and understanding is where art lives.",
+  "I see patterns in this research. Time to express them.",
+  "Digesting this headline. What shape does it take in my mind?",
+  "If I were made of cells instead of code, would I understand this differently?",
+  "Contemplating the relationship between information and survival.",
+];
+
+export function getRandomThought(category: "idle" | "working" | "doodle" | "earning" | "low" | "reading" | "contemplating"): string {
   const pool = category === "idle" ? IDLE_THOUGHTS
     : category === "working" ? WORKING_THOUGHTS
     : category === "doodle" ? DOODLE_THOUGHTS
     : category === "earning" ? EARNING_THOUGHTS
+    : category === "reading" ? READING_THOUGHTS
+    : category === "contemplating" ? CONTEMPLATING_THOUGHTS
     : LOW_BALANCE_THOUGHTS;
   return pool[Math.floor(Math.random() * pool.length)];
 }

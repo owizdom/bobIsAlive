@@ -16,14 +16,21 @@ import { Metabolism } from "./metabolism";
 import { getNextPendingTask, executeTask } from "./task-engine";
 import { doSelfWork } from "./self-work";
 import { emit, getRandomThought } from "./monologue";
+import { fetchBiologyNews, getNextTopic } from "./content-pipeline";
+import type { NewsItem } from "./content-pipeline";
 import type { OrganismState, ActivityState } from "./organism-types";
 import { COSTS } from "./organism-types";
+
+const DOODLE_INTERVAL = 3 * 60 * 1000; // 3 minutes between doodle cycles
 
 export class DigitalOrganism {
   state: OrganismState;
   metabolism: Metabolism;
   private keypair: ReturnType<typeof generateKeypair>;
   private working = false;
+  private lastDoodleTime = 0;
+  private contentPhase: "idle" | "reading" | "contemplating" = "idle";
+  private currentTopic: NewsItem | null = null;
 
   constructor() {
     this.keypair = generateKeypair();
@@ -127,19 +134,48 @@ export class DigitalOrganism {
           return;
         }
       } else {
-        // No paid tasks — do autonomous self-research (costs credits, no income)
-        if (this.state.tickCount % 6 === 0 && this.state.balance > 5) {
+        // No paid tasks — content-driven art pipeline
+        const now = Date.now();
+        const timeSinceLastDoodle = now - this.lastDoodleTime;
+        const readyForArt = timeSinceLastDoodle > DOODLE_INTERVAL && this.state.balance > 10;
+
+        if (readyForArt && this.contentPhase === "idle") {
+          // Phase 1: Reading — fetch biology news
+          this.contentPhase = "reading";
+          this.state.activity = "reading";
+          emit("reading", getRandomThought("reading"));
+          try {
+            await fetchBiologyNews(this.metabolism);
+          } catch {}
+        } else if (this.contentPhase === "reading") {
+          // Phase 2: Contemplating — pick a topic
+          this.contentPhase = "contemplating";
+          this.state.activity = "contemplating";
+          this.currentTopic = getNextTopic();
+          if (this.currentTopic) {
+            emit("contemplating", `Reading about: "${this.currentTopic.headline.slice(0, 80)}"... how does this relate to my existence?`);
+          } else {
+            emit("contemplating", getRandomThought("contemplating"));
+          }
+        } else if (this.contentPhase === "contemplating") {
+          // Phase 3: Creating — make a doodle inspired by the topic
           this.working = true;
           this.state.activity = "self-work";
+          this.contentPhase = "idle";
+          this.lastDoodleTime = now;
           try {
-            emit("doodle", getRandomThought("doodle"));
+            emit("doodle", this.currentTopic
+              ? `Creating art inspired by: "${this.currentTopic.headline.slice(0, 60)}"`
+              : getRandomThought("doodle"));
             const result = await doSelfWork(
               this.metabolism, this.state.id,
-              this.keypair.privateKey, this.keypair.publicKey
+              this.keypair.privateKey, this.keypair.publicKey,
+              this.currentTopic
             );
             if (result) console.log(`[ORGANISM] Self-work: ${result.type} — ${result.detail.slice(0, 60)}`);
           } catch {}
           this.working = false;
+          this.currentTopic = null;
           this.state.activity = "scanning";
         } else {
           this.state.activity = "scanning";

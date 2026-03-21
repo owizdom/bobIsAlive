@@ -15,6 +15,8 @@ import crypto from "crypto";
 import { Metabolism } from "./metabolism";
 import { buildAttestation } from "./keystore";
 import { listDoodle, isNFTEnabled } from "./nft";
+import type { NewsItem } from "./content-pipeline";
+import { pickStyleForTopic, generateContentTitle } from "./content-pipeline";
 
 // ═══════════════════════════════════════════════════════════════
 // DOODLE ART GENERATOR — Procedural SVG
@@ -40,7 +42,7 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function generateDoodle(seed: string): { svg: string; title: string; description: string } {
+function generateDoodle(seed: string, styleOverride?: string | null): { svg: string; title: string; description: string } {
   const palette = pick(PALETTES);
   const bg = "#0a0e1a";
   const w = 800, h = 800;
@@ -51,7 +53,7 @@ function generateDoodle(seed: string): { svg: string; title: string; description
     "circles", "triangles", "squiggles", "blobs", "stars", "grid",
     "pixels", "waves", "spirals", "constellation", "cells", "glitch",
   ];
-  const style = pick(doodleTypes);
+  const style = styleOverride && doodleTypes.includes(styleOverride) ? styleOverride : pick(doodleTypes);
 
   for (let i = 0; i < shapeCount; i++) {
     const color = pick(palette);
@@ -321,15 +323,16 @@ export async function doSelfWork(
   metabolism: Metabolism,
   agentId: string,
   privateKey: string,
-  publicKey: string
+  publicKey: string,
+  topic?: NewsItem | null
 ): Promise<{ type: "doodle" | "improve"; detail: string } | null> {
   selfWorkCount++;
 
   // Alternate: mostly doodles (visual), occasionally self-improvement
-  if (selfWorkCount % 3 === 0) {
+  if (selfWorkCount % 5 === 0) {
     return doSelfImprovement(agentId);
   } else {
-    return doDoodle(metabolism, agentId, privateKey, publicKey);
+    return doDoodle(metabolism, agentId, privateKey, publicKey, topic);
   }
 }
 
@@ -337,10 +340,33 @@ async function doDoodle(
   metabolism: Metabolism,
   agentId: string,
   privateKey: string,
-  publicKey: string
+  publicKey: string,
+  topic?: NewsItem | null
 ): Promise<{ type: "doodle"; detail: string } | null> {
   const seed = crypto.randomBytes(8).toString("hex");
-  const { svg, title, description } = generateDoodle(seed);
+
+  // Pick style based on topic if available
+  const topicStyle = topic ? pickStyleForTopic(topic.headline) : null;
+  const { svg, title: fallbackTitle, description: fallbackDesc } = generateDoodle(seed, topicStyle);
+
+  // Generate content-driven title if we have a topic
+  let title = fallbackTitle;
+  let description = fallbackDesc;
+  if (topic) {
+    try {
+      const { getLLMClient } = await import("./task-engine");
+      const client = getLLMClient();
+      if (client) {
+        const style = topicStyle || "abstract";
+        const result = await generateContentTitle(topic, style, client, metabolism);
+        title = result.title;
+        description = result.description;
+        console.log(`[DOODLE] Content title: "${title}" (inspired by: ${topic.headline.slice(0, 50)})`);
+      }
+    } catch {
+      // fallback to procedural title
+    }
+  }
 
   // Save locally
   const outputDir = path.join(process.cwd(), "doodles");

@@ -88,7 +88,7 @@ export default function App() {
           <div className="flex items-center gap-3">
             <h2 className="text-[17px] font-bold font-display italic">{navItems.find(n => n.id === view)?.label}</h2>
             <span className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full ${alive ? 'bg-green-bg text-green' : 'bg-red-bg text-red'}`}>
-              {alive ? (hb?.activity === 'self-work' ? 'Creating art' : hb?.activity === 'working' ? 'Working' : 'Online') : 'Deceased'}
+              {alive ? (hb?.activity === 'reading' ? 'Reading' : hb?.activity === 'contemplating' ? 'Thinking' : hb?.activity === 'self-work' ? 'Creating art' : hb?.activity === 'working' ? 'Working' : 'Online') : 'Deceased'}
             </span>
           </div>
           <div className="font-mono text-[12px] text-text-3">
@@ -290,7 +290,7 @@ function BrainView({ hb, monologue }: { hb: Heartbeat | null; monologue: Monolog
   const COLORS: Record<string, string> = {
     thought: 'text-purple', scan: 'text-text-3', earn: 'text-green', burn: 'text-red',
     doodle: 'text-amber', nft: 'text-amber', task: 'text-blue', improve: 'text-purple',
-    system: 'text-text-4', survival: 'text-red',
+    system: 'text-text-4', survival: 'text-red', reading: 'text-blue', contemplating: 'text-purple',
   }
   const BGS: Record<string, string> = { earn: 'bg-green-bg', doodle: 'bg-amber-bg', task: 'bg-blue-bg' }
 
@@ -300,7 +300,7 @@ function BrainView({ hb, monologue }: { hb: Heartbeat | null; monologue: Monolog
       <div className="flex flex-col items-center py-8 bg-surface border-b border-border relative overflow-hidden">
         <OrganismCanvas alive={alive} balance={balance} activity={hb?.activity ?? 'idle'} />
         <div className="mt-3 font-mono text-[12px] text-text-3 tracking-wide relative z-10">
-          {alive ? ({ idle: 'Scanning for tasks...', scanning: 'Scanning...', working: 'Executing task', 'self-work': 'Creating doodle art' }[hb?.activity ?? 'idle'] ?? 'Active') : 'Offline'}
+          {alive ? ({ idle: 'Scanning for tasks...', scanning: 'Scanning...', working: 'Executing task', 'self-work': 'Creating doodle art', reading: 'Reading biology news...', contemplating: 'Contemplating...' }[hb?.activity ?? 'idle'] ?? 'Active') : 'Offline'}
         </div>
         <div className="mt-1 font-mono text-[20px] font-bold tabular-nums relative z-10" style={{ color: balance > 30 ? '#10b981' : balance > 10 ? '#f59e0b' : '#ef4444' }}>
           {balance.toFixed(2)} <span className="text-[12px] font-normal text-text-4">credits</span>

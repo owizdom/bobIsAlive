@@ -31,7 +31,7 @@ export const TASK_REWARDS: Record<TaskType, number> = {
 // ── Organism State ──────────────────────────────────────────────────────────
 
 export type OrganismStatus = "alive" | "dead";
-export type ActivityState = "idle" | "scanning" | "working" | "self-work";
+export type ActivityState = "idle" | "scanning" | "working" | "self-work" | "reading" | "contemplating";
 
 export interface OrganismState {
   id: string;

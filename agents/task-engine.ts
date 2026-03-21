@@ -25,6 +25,8 @@ import type { LLMConfig } from "./organism-types";
 
 let llmClient: { call: (system: string, user: string, maxTokens?: number) => Promise<{ content: string; tokensUsed: number }> } | null = null;
 
+export function getLLMClient() { return llmClient; }
+
 export function initLLMClient(config: LLMConfig): void {
   if (config.provider === "anthropic") {
     const client = new Anthropic({ apiKey: config.apiKey });
