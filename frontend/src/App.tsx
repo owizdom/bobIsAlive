@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useHeartbeat, useOrganism, useTasks, useDoodles, useMonologue, submitTask } from './hooks/useOrganism'
 import type { Heartbeat, Task, Doodle } from './types'
 import type { MonologueEntry } from './hooks/useOrganism'
@@ -220,162 +220,301 @@ export default function App() {
   )
 }
 
-/* ─── Living Organism Canvas ─── */
+/* ─── Living Organism Canvas — Side-scrolling terrain ─── */
 function OrganismCanvas({ alive, balance, activity }: { alive: boolean; balance: number; activity: string }) {
-  useEffect(() => {
-    const el = document.getElementById('organism-canvas') as HTMLCanvasElement
-    if (!el) return
-    const ctx = el.getContext('2d')
-    if (!ctx) return
+  const canvasRef = React.useRef<HTMLCanvasElement>(null)
+  const stateRef = React.useRef({ alive, balance, activity })
+  stateRef.current = { alive, balance, activity }
 
-    const W = 300, H = 220
+  useEffect(() => {
+    const el = canvasRef.current
+    if (!el) return
+    const c = el.getContext('2d')
+    if (!c) return
+
+    const W = el.parentElement?.clientWidth || 800
+    const H = 170
     el.width = W * 2; el.height = H * 2
     el.style.width = W + 'px'; el.style.height = H + 'px'
-    ctx.scale(2, 2)
+    c.scale(2, 2)
 
     let frame = 0
     let animId: number
 
-    // Particles
-    const particles: { x: number; y: number; angle: number; radius: number; speed: number; size: number; opacity: number }[] = []
-    for (let i = 0; i < 30; i++) {
-      particles.push({
-        x: 0, y: 0,
-        angle: Math.random() * Math.PI * 2,
-        radius: 55 + Math.random() * 35,
-        speed: 0.003 + Math.random() * 0.008,
-        size: 1 + Math.random() * 2.5,
-        opacity: 0.2 + Math.random() * 0.5,
+    // Terrain height at world-x
+    const terrainY = (wx: number) => {
+      return H * 0.72
+        + Math.sin(wx * 0.008) * 18
+        + Math.sin(wx * 0.02 + 1.3) * 8
+        + Math.sin(wx * 0.04 + 2.7) * 4
+    }
+
+    // Bob state
+    let bobY = H * 0.5
+    const bobX = W * 0.18
+
+    // Background organisms
+    const bgOrgs: { x: number; y: number; r: number; speed: number; wobble: number; phase: number }[] = []
+    for (let i = 0; i < 7; i++) {
+      bgOrgs.push({
+        x: Math.random() * W * 1.5,
+        y: 20 + Math.random() * H * 0.4,
+        r: 3 + Math.random() * 6,
+        speed: 0.15 + Math.random() * 0.4,
+        wobble: Math.random() * Math.PI * 2,
+        phase: Math.random() * Math.PI * 2,
       })
     }
 
+    // Spore particles
+    const spores: { x: number; y: number; vy: number; size: number; alpha: number }[] = []
+    for (let i = 0; i < 20; i++) {
+      spores.push({ x: Math.random() * W, y: Math.random() * H, vy: -0.2 - Math.random() * 0.5, size: 0.5 + Math.random() * 1.5, alpha: 0.1 + Math.random() * 0.3 })
+    }
+
+    // Ground detail objects
+    const details: { wx: number; type: number; h: number }[] = []
+    for (let i = 0; i < 30; i++) {
+      details.push({ wx: Math.random() * 2000, type: Math.floor(Math.random() * 3), h: 4 + Math.random() * 10 })
+    }
+
+    // Art trail
+    const trail: { x: number; y: number; color: string; life: number }[] = []
+
     const draw = () => {
+      const { alive: isAlive, balance: bal, activity: act } = stateRef.current
       frame++
-      ctx.clearRect(0, 0, W, H)
-      const cx = W / 2, cy = H / 2 - 5
       const t = frame * 0.02
-      const working = activity === 'working' || activity === 'self-work'
-      const pulseSpeed = working ? 0.06 : 0.025
-      const pulse = Math.sin(frame * pulseSpeed)
+      const working = act === 'working' || act === 'self-work'
+      const reading = act === 'reading'
+      const scrollSpeed = !isAlive ? 0 : working ? 2.5 : reading ? 0.6 : 1.2
+      const scroll = frame * scrollSpeed
 
       // Health color
-      const r = balance < 10 ? 239 : balance < 30 ? 245 : 16
-      const g = balance < 10 ? 68 : balance < 30 ? 158 : 185
-      const b2 = balance < 10 ? 68 : balance < 30 ? 11 : 129
+      const hr = bal < 10 ? 239 : bal < 30 ? 245 : 16
+      const hg = bal < 10 ? 68 : bal < 30 ? 158 : 185
+      const hb = bal < 10 ? 68 : bal < 30 ? 11 : 129
 
-      if (!alive) {
-        // Dead — gray static blob
-        ctx.beginPath()
-        ctx.arc(cx, cy, 40, 0, Math.PI * 2)
-        ctx.fillStyle = '#9ca3af'
-        ctx.fill()
-        ctx.fillStyle = 'rgba(156,163,175,0.1)'
-        ctx.beginPath(); ctx.arc(cx, cy, 55, 0, Math.PI * 2); ctx.fill()
-        animId = requestAnimationFrame(draw)
-        return
+      // Clear
+      c.clearRect(0, 0, W, H)
+
+      // Sky gradient
+      const skyAlpha = bal < 10 ? 0.03 : bal < 30 ? 0.04 : 0.06
+      const skyGrad = c.createLinearGradient(0, 0, 0, H)
+      skyGrad.addColorStop(0, `rgba(${hr},${hg},${hb},${skyAlpha * 0.3})`)
+      skyGrad.addColorStop(1, `rgba(${hr},${hg},${hb},${skyAlpha})`)
+      c.fillStyle = skyGrad
+      c.fillRect(0, 0, W, H)
+
+      // Background hills (parallax layer 1 — slow)
+      c.beginPath()
+      c.moveTo(0, H)
+      for (let x = 0; x <= W; x += 3) {
+        const wy = H * 0.8 + Math.sin((x + scroll * 0.2) * 0.005) * 25 + Math.sin((x + scroll * 0.2) * 0.012) * 12
+        c.lineTo(x, wy)
       }
+      c.lineTo(W, H); c.closePath()
+      c.fillStyle = `rgba(${hr},${hg},${hb},0.04)`
+      c.fill()
 
-      // Outer glow rings
-      for (let i = 3; i >= 0; i--) {
-        const glowR = 50 + i * 15 + pulse * 4
-        const alpha = (0.03 - i * 0.006) * (working ? 1.8 : 1)
-        ctx.beginPath()
-        ctx.arc(cx, cy, glowR, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(${r},${g},${b2},${alpha})`
-        ctx.fill()
-      }
+      // Background organisms
+      bgOrgs.forEach(o => {
+        o.x -= o.speed * scrollSpeed * 0.5
+        if (o.x < -20) o.x = W + 20 + Math.random() * 100
+        const oy = o.y + Math.sin(t * 0.5 + o.wobble) * 8
+        const or2 = o.r + Math.sin(t * 0.8 + o.phase) * 1.5
 
-      // Membrane — wobbly organic border
-      ctx.beginPath()
-      const membraneR = 48 + pulse * 3
-      for (let i = 0; i <= 64; i++) {
-        const a = (i / 64) * Math.PI * 2
-        const wobble = Math.sin(a * 3 + t * 2) * 3 + Math.sin(a * 5 + t * 1.3) * 2 + Math.sin(a * 7 + t * 0.7) * 1.5
-        const mr = membraneR + wobble * (working ? 1.5 : 1)
-        const mx = cx + Math.cos(a) * mr
-        const my = cy + Math.sin(a) * mr
-        if (i === 0) ctx.moveTo(mx, my); else ctx.lineTo(mx, my)
-      }
-      ctx.closePath()
-      ctx.strokeStyle = `rgba(${r},${g},${b2},0.25)`
-      ctx.lineWidth = 1.5
-      ctx.stroke()
-
-      // Inner blob — organic shape with noise
-      ctx.beginPath()
-      const blobR = 36 + pulse * 4
-      for (let i = 0; i <= 48; i++) {
-        const a = (i / 48) * Math.PI * 2
-        const n1 = Math.sin(a * 2 + t * 1.5) * 4
-        const n2 = Math.sin(a * 4 + t * 0.8) * 2
-        const n3 = Math.sin(a * 6 + t * 2.2) * 1.5
-        const br = blobR + n1 + n2 + n3
-        const bx = cx + Math.cos(a) * br
-        const by = cy + Math.sin(a) * br
-        if (i === 0) ctx.moveTo(bx, by); else ctx.lineTo(bx, by)
-      }
-      ctx.closePath()
-
-      // Gradient fill
-      const grad = ctx.createRadialGradient(cx - 10, cy - 10, 5, cx, cy, blobR + 5)
-      const lightR = Math.min(255, r + 80)
-      const lightG = Math.min(255, g + 60)
-      const lightB = Math.min(255, b2 + 40)
-      grad.addColorStop(0, `rgba(${lightR},${lightG},${lightB},0.9)`)
-      grad.addColorStop(0.5, `rgba(${r},${g},${b2},0.85)`)
-      grad.addColorStop(1, `rgba(${Math.floor(r*0.4)},${Math.floor(g*0.4)},${Math.floor(b2*0.4)},0.9)`)
-      ctx.fillStyle = grad
-      ctx.fill()
-
-      // Inner highlight
-      ctx.beginPath()
-      ctx.ellipse(cx - 8, cy - 12, 12, 8, -0.4, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(255,255,255,${0.15 + pulse * 0.05})`
-      ctx.fill()
-
-      // Nucleus
-      const nucR = 8 + Math.sin(t * 1.2) * 2
-      ctx.beginPath()
-      ctx.arc(cx + Math.sin(t * 0.3) * 3, cy + Math.cos(t * 0.4) * 3, nucR, 0, Math.PI * 2)
-      const nucGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, nucR)
-      nucGrad.addColorStop(0, `rgba(${lightR},${lightG},${lightB},0.6)`)
-      nucGrad.addColorStop(1, `rgba(${r},${g},${b2},0.3)`)
-      ctx.fillStyle = nucGrad
-      ctx.fill()
-
-      // Orbiting particles
-      particles.forEach(p => {
-        p.angle += p.speed * (working ? 2 : 1)
-        const pr = p.radius + Math.sin(t + p.angle * 3) * 5
-        p.x = cx + Math.cos(p.angle) * pr
-        p.y = cy + Math.sin(p.angle) * pr * 0.7
-        const pAlpha = p.opacity * (0.7 + Math.sin(t + p.angle) * 0.3)
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(${r},${g},${b2},${pAlpha})`
-        ctx.fill()
+        // Wobbly blob shape
+        c.beginPath()
+        for (let i = 0; i <= 16; i++) {
+          const a = (i / 16) * Math.PI * 2
+          const wobble = Math.sin(a * 3 + t + o.phase) * 1.5
+          const px = o.x + Math.cos(a) * (or2 + wobble)
+          const py = oy + Math.sin(a) * (or2 + wobble) * 0.8
+          if (i === 0) c.moveTo(px, py); else c.lineTo(px, py)
+        }
+        c.closePath()
+        c.fillStyle = `rgba(${hr},${hg},${hb},0.08)`
+        c.fill()
+        // Nucleus
+        c.beginPath()
+        c.arc(o.x, oy, or2 * 0.3, 0, Math.PI * 2)
+        c.fillStyle = `rgba(${hr},${hg},${hb},0.12)`
+        c.fill()
       })
 
-      // Small floating organelles inside
-      for (let i = 0; i < 6; i++) {
-        const oa = t * 0.5 + i * 1.05
-        const or2 = 15 + Math.sin(t * 0.7 + i) * 8
-        const ox = cx + Math.cos(oa) * or2
-        const oy = cy + Math.sin(oa) * or2
-        ctx.beginPath()
-        ctx.arc(ox, oy, 2 + Math.sin(t + i) * 0.5, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(255,255,255,${0.15 + Math.sin(t * 2 + i) * 0.08})`
-        ctx.fill()
+      // Spores floating up
+      spores.forEach(s => {
+        s.y += s.vy * (isAlive ? 1 : 0.1)
+        s.x -= scrollSpeed * 0.3
+        if (s.y < -5) { s.y = H + 5; s.x = Math.random() * W }
+        if (s.x < -5) { s.x = W + 5; s.y = Math.random() * H }
+        c.beginPath()
+        c.arc(s.x, s.y, s.size, 0, Math.PI * 2)
+        c.fillStyle = `rgba(${hr},${hg},${hb},${s.alpha * (isAlive ? 1 : 0.3)})`
+        c.fill()
+      })
+
+      // Main terrain
+      c.beginPath()
+      c.moveTo(0, H)
+      for (let x = 0; x <= W; x += 2) {
+        c.lineTo(x, terrainY(x + scroll))
       }
+      c.lineTo(W, H); c.closePath()
+      const tGrad = c.createLinearGradient(0, H * 0.6, 0, H)
+      tGrad.addColorStop(0, `rgba(${hr},${hg},${hb},0.12)`)
+      tGrad.addColorStop(1, `rgba(${hr},${hg},${hb},0.04)`)
+      c.fillStyle = tGrad
+      c.fill()
+
+      // Terrain line
+      c.beginPath()
+      for (let x = 0; x <= W; x += 2) {
+        const ty = terrainY(x + scroll)
+        if (x === 0) c.moveTo(x, ty); else c.lineTo(x, ty)
+      }
+      c.strokeStyle = `rgba(${hr},${hg},${hb},0.2)`
+      c.lineWidth = 1.5
+      c.stroke()
+
+      // Ground details (mushrooms, flagella)
+      details.forEach(d => {
+        const sx = ((d.wx - scroll * 0.8) % (W * 2.5) + W * 2.5) % (W * 2.5) - W * 0.25
+        if (sx < -20 || sx > W + 20) return
+        const dy = terrainY(sx + scroll)
+        c.strokeStyle = `rgba(${hr},${hg},${hb},0.15)`
+        c.lineWidth = 1
+        if (d.type === 0) {
+          // Mushroom
+          c.beginPath(); c.moveTo(sx, dy); c.lineTo(sx, dy - d.h); c.stroke()
+          c.beginPath(); c.arc(sx, dy - d.h, d.h * 0.4, Math.PI, 0); c.fillStyle = `rgba(${hr},${hg},${hb},0.1)`; c.fill()
+        } else if (d.type === 1) {
+          // Flagella
+          c.beginPath(); c.moveTo(sx, dy)
+          for (let j = 0; j < 4; j++) { c.quadraticCurveTo(sx + Math.sin(t + j) * 4, dy - d.h * (j + 1) / 4, sx + Math.sin(t + j + 1) * 3, dy - d.h * (j + 1.5) / 4) }
+          c.stroke()
+        } else {
+          // Dots cluster
+          for (let j = 0; j < 3; j++) {
+            c.beginPath(); c.arc(sx + j * 3 - 3, dy - 2 - j * 2, 1.5, 0, Math.PI * 2)
+            c.fillStyle = `rgba(${hr},${hg},${hb},0.12)`; c.fill()
+          }
+        }
+      })
+
+      // Art trail (when creating)
+      if (act === 'self-work' && isAlive && frame % 4 === 0) {
+        const colors = ['#ff4d61', '#ff8c00', '#0cbb76', '#1f73ff', '#a855f7']
+        trail.push({ x: bobX + 15, y: bobY + 5, color: colors[Math.floor(Math.random() * colors.length)], life: 80 })
+      }
+      for (let i = trail.length - 1; i >= 0; i--) {
+        trail[i].life--
+        trail[i].x -= scrollSpeed * 0.8
+        if (trail[i].life <= 0) { trail.splice(i, 1); continue }
+        c.beginPath()
+        c.arc(trail[i].x, trail[i].y, 2.5 * (trail[i].life / 80), 0, Math.PI * 2)
+        c.fillStyle = trail[i].color + Math.floor((trail[i].life / 80) * 200).toString(16).padStart(2, '0')
+        c.fill()
+      }
+
+      // Bob — the main organism
+      const groundY = terrainY(bobX + scroll)
+      const bobTargetY = groundY - 22
+      const bounceAmp = working ? 8 : reading ? 2 : 5
+      const bounceFreq = working ? 0.08 : reading ? 0.03 : 0.05
+      bobY = isAlive ? bobTargetY + Math.sin(frame * bounceFreq) * bounceAmp : groundY - 10
+      const bobR = isAlive ? 16 + Math.sin(t * 1.2) * 2 : 12
+      const squash = 1 + Math.sin(frame * bounceFreq) * 0.08
+
+      // Glow
+      if (isAlive) {
+        const glowGrad = c.createRadialGradient(bobX, bobY, bobR * 0.5, bobX, bobY, bobR * 3)
+        glowGrad.addColorStop(0, `rgba(${hr},${hg},${hb},${working ? 0.15 : 0.06})`)
+        glowGrad.addColorStop(1, 'rgba(0,0,0,0)')
+        c.fillStyle = glowGrad
+        c.fillRect(bobX - bobR * 3, bobY - bobR * 3, bobR * 6, bobR * 6)
+      }
+
+      // Membrane
+      c.beginPath()
+      for (let i = 0; i <= 32; i++) {
+        const a = (i / 32) * Math.PI * 2
+        const wobble = Math.sin(a * 3 + t * 2) * 2 + Math.sin(a * 5 + t * 1.3) * 1.2
+        const mr = (bobR + 4 + wobble) * (Math.abs(Math.cos(a)) < 0.5 ? squash : 1)
+        const mx = bobX + Math.cos(a) * mr
+        const my = bobY + Math.sin(a) * mr * 0.85
+        if (i === 0) c.moveTo(mx, my); else c.lineTo(mx, my)
+      }
+      c.closePath()
+      c.strokeStyle = `rgba(${hr},${hg},${hb},${isAlive ? 0.25 : 0.1})`
+      c.lineWidth = 1
+      c.stroke()
+
+      // Body
+      c.beginPath()
+      for (let i = 0; i <= 32; i++) {
+        const a = (i / 32) * Math.PI * 2
+        const n = Math.sin(a * 2 + t * 1.5) * 2.5 + Math.sin(a * 4 + t * 0.8) * 1.5
+        const br = (bobR + n) * (Math.abs(Math.cos(a)) < 0.5 ? squash : 1)
+        const bx = bobX + Math.cos(a) * br
+        const by = bobY + Math.sin(a) * br * 0.85
+        if (i === 0) c.moveTo(bx, by); else c.lineTo(bx, by)
+      }
+      c.closePath()
+      const bGrad = c.createRadialGradient(bobX - 4, bobY - 5, 2, bobX, bobY, bobR + 3)
+      const lr = Math.min(255, hr + 80), lg = Math.min(255, hg + 60), lb = Math.min(255, hb + 40)
+      bGrad.addColorStop(0, `rgba(${lr},${lg},${lb},${isAlive ? 0.9 : 0.3})`)
+      bGrad.addColorStop(0.5, `rgba(${hr},${hg},${hb},${isAlive ? 0.85 : 0.25})`)
+      bGrad.addColorStop(1, `rgba(${Math.floor(hr * 0.4)},${Math.floor(hg * 0.4)},${Math.floor(hb * 0.4)},${isAlive ? 0.9 : 0.3})`)
+      c.fillStyle = bGrad
+      c.fill()
+
+      // Eye/nucleus
+      const eyeX = bobX + 4 + Math.sin(t * 0.3) * 2
+      const eyeY = bobY - 2 + Math.cos(t * 0.4) * 1.5
+      c.beginPath()
+      c.arc(eyeX, eyeY, 3.5, 0, Math.PI * 2)
+      c.fillStyle = `rgba(255,255,255,${isAlive ? 0.4 : 0.1})`
+      c.fill()
+      if (isAlive) {
+        c.beginPath()
+        c.arc(eyeX + 1, eyeY - 0.5, 1.5, 0, Math.PI * 2)
+        c.fillStyle = `rgba(${Math.floor(hr * 0.3)},${Math.floor(hg * 0.3)},${Math.floor(hb * 0.3)},0.7)`
+        c.fill()
+      }
+
+      // Reading feelers
+      if (reading && isAlive) {
+        for (let i = 0; i < 2; i++) {
+          const fa = -0.8 + i * 0.5
+          c.beginPath()
+          c.moveTo(bobX + Math.cos(fa) * bobR, bobY + Math.sin(fa) * bobR * 0.7)
+          const fx = bobX + Math.cos(fa) * (bobR + 12 + Math.sin(t * 2 + i) * 4)
+          const fy = bobY + Math.sin(fa) * (bobR + 10) * 0.7 - 5
+          c.quadraticCurveTo(bobX + Math.cos(fa) * (bobR + 6), fy - 3, fx, fy)
+          c.strokeStyle = `rgba(${hr},${hg},${hb},0.3)`
+          c.lineWidth = 1
+          c.stroke()
+          c.beginPath(); c.arc(fx, fy, 1.5, 0, Math.PI * 2)
+          c.fillStyle = `rgba(${hr},${hg},${hb},0.4)`; c.fill()
+        }
+      }
+
+      // Shadow under bob
+      c.beginPath()
+      c.ellipse(bobX, groundY + 2, bobR * 0.8, 3, 0, 0, Math.PI * 2)
+      c.fillStyle = `rgba(0,0,0,${isAlive ? 0.06 : 0.03})`
+      c.fill()
 
       animId = requestAnimationFrame(draw)
     }
 
     draw()
     return () => cancelAnimationFrame(animId)
-  }, [alive, balance, activity])
+  }, [])
 
-  return <canvas id="organism-canvas" className="relative z-10" style={{ width: 300, height: 220 }} />
+  return <canvas ref={canvasRef} className="w-full" style={{ height: 170 }} />
 }
 
 /* ─── Brain ─── */
@@ -392,13 +531,12 @@ function BrainView({ hb, monologue }: { hb: Heartbeat | null; monologue: Monolog
   return (
     <div className="h-full flex flex-col">
       {/* Living organism animation */}
-      <div className="flex flex-col items-center py-8 bg-surface border-b border-border relative overflow-hidden">
+      <div className="bg-surface border-b border-border relative overflow-hidden">
         <OrganismCanvas alive={alive} balance={balance} activity={hb?.activity ?? 'idle'} />
-        <div className="mt-3 font-mono text-[12px] text-text-3 tracking-wide relative z-10">
-          {alive ? ({ idle: 'Scanning for tasks...', scanning: 'Scanning...', working: 'Executing task', 'self-work': 'Creating doodle art', reading: 'Reading biology news...', contemplating: 'Contemplating...' }[hb?.activity ?? 'idle'] ?? 'Active') : 'Offline'}
-        </div>
-        <div className="mt-1 font-mono text-[20px] font-bold tabular-nums relative z-10" style={{ color: balance > 30 ? '#10b981' : balance > 10 ? '#f59e0b' : '#ef4444' }}>
-          {balance.toFixed(2)} <span className="text-[12px] font-normal text-text-4">credits</span>
+        <div className="absolute bottom-3 left-0 right-0 text-center">
+          <span className="font-mono text-[11px] text-text-4 tracking-wide bg-surface/80 px-3 py-1 rounded-full backdrop-blur-sm">
+            {alive ? ({ idle: 'Scanning for tasks...', scanning: 'Scanning...', working: 'Executing task', 'self-work': 'Creating doodle art', reading: 'Reading biology news...', contemplating: 'Contemplating...' }[hb?.activity ?? 'idle'] ?? 'Active') : 'Offline'}
+          </span>
         </div>
       </div>
 
