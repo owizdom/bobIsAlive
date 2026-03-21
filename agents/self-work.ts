@@ -252,13 +252,11 @@ async function doDoodle(
 
   // List as NFT for sale
   let nftListed = false;
-  if (isNFTEnabled()) {
-    try {
-      await listDoodle(title, description, filename, attestation);
-      nftListed = true;
-    } catch (e) {
-      console.warn(`[DOODLE] NFT listing failed: ${e instanceof Error ? e.message.slice(0, 60) : e}`);
-    }
+  try {
+    await listDoodle(title, description, filename, attestation);
+    nftListed = true;
+  } catch (e) {
+    console.warn(`[DOODLE] NFT listing failed: ${e instanceof Error ? e.message.slice(0, 60) : e}`);
   }
 
   const entry = { title, description, filename, timestamp: Date.now(), attestation, pushedToGithub: pushed, nftListed };

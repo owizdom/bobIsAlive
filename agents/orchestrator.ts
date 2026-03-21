@@ -195,7 +195,7 @@ app.get("/api/organism", (_req, res) => {
       instanceId: process.env.EIGENCOMPUTE_INSTANCE_ID || "local-dev",
     },
     research: { enabled: isSearchEnabled() },
-    nft: { enabled: isNFTEnabled(), wallet: getWalletAddress(), chain: "Base Sepolia" },
+    nft: { enabled: isNFTEnabled(), wallet: getWalletAddress(), chain: "Starknet Sepolia" },
     llm: { provider: getActiveLLMProvider(), model: getModelName() },
   });
 });

@@ -22,7 +22,6 @@ export default function App() {
   const navItems: { id: View; icon: string; label: string }[] = [
     { id: 'brain', icon: '', label: 'Brain' },
     { id: 'gallery', icon: '', label: 'Gallery' },
-    { id: 'market', icon: '', label: 'Market' },
     { id: 'tasks', icon: '', label: 'Tasks' },
   ]
 
@@ -101,7 +100,6 @@ export default function App() {
         <div className="flex-1 overflow-y-auto bg-bg-alt">
           {view === 'brain' && <BrainView hb={hb} monologue={monologue} />}
           {view === 'gallery' && <GalleryView doodles={doodles} />}
-          {view === 'market' && <MarketView />}
           {view === 'tasks' && <TasksView tasks={tasks} alive={alive} onRefresh={refresh} />}
         </div>
       </div>
@@ -336,22 +334,95 @@ function BrainView({ hb, monologue }: { hb: Heartbeat | null; monologue: Monolog
   )
 }
 
-/* ─── Gallery ─── */
+/* ─── Gallery + Buy ─── */
 function GalleryView({ doodles }: { doodles: Doodle[] }) {
+  const [listings, setListings] = useState<any[]>([])
+  const [buying, setBuying] = useState<number | null>(null)
+  const pollListings = () => fetch('/api/nft/listings').then(r => r.json()).then(d => setListings(d.listings || [])).catch(() => {})
+  useEffect(() => { pollListings(); const i = setInterval(pollListings, 8000); return () => clearInterval(i) }, [])
+
+  const handleBuy = async (tokenId: number, priceEth: string) => {
+    setBuying(tokenId)
+    try {
+      const { StarkZap, Amount, fromAddress, sepoliaTokens } = await import('starkzap')
+      const sdk = new StarkZap({
+        network: 'sepolia' as const,
+        paymaster: { nodeUrl: 'https://starknet.paymaster.avnu.fi' },
+      })
+
+      // Connect via Cartridge (gasless, social login)
+      const wallet = await sdk.connectCartridge({
+        policies: [{ target: sepoliaTokens.ETH.address, method: 'transfer' }],
+      })
+
+      // Get organism wallet address from API
+      const orgData = await fetch('/api/organism').then(r => r.json())
+      const bobWallet = orgData.nft?.wallet
+
+      if (!bobWallet) { alert('Organism wallet not configured'); setBuying(null); return }
+
+      // Transfer ETH to bob's wallet
+      const tx = await wallet.transfer(sepoliaTokens.ETH, [
+        { to: fromAddress(bobWallet), amount: Amount.parse(priceEth, sepoliaTokens.ETH) },
+      ])
+      await tx.wait()
+
+      // Record the purchase
+      const connectedAddr = wallet.address || 'unknown'
+      const r = await fetch('/api/nft/buy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenId, buyerAddress: connectedAddr, txHash: tx.hash }),
+      })
+      const res = await r.json()
+      if (res.ok) {
+        alert(`Purchased! Bob earned ${res.creditsEarned.toFixed(1)} credits.\nTx: ${tx.hash.slice(0, 20)}...`)
+        pollListings()
+      } else alert(res.error || 'Failed')
+    } catch (err: any) {
+      console.error('[BUY ERROR]', err)
+      const msg = err?.message || String(err) || 'Purchase failed'
+      alert('Buy error: ' + msg.slice(0, 200))
+    }
+    setBuying(null)
+  }
+
   if (doodles.length === 0) return <div className="text-center py-20 text-text-4"><p className="text-lg font-semibold">No doodles yet</p><p className="text-sm mt-1">bob creates art when idle.</p></div>
   return (
     <div className="p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-      {[...doodles].reverse().map((d, i) => (
-        <a key={i} href={`/doodles/${d.filename}`} target="_blank" rel="noopener noreferrer"
-          className="group bg-surface rounded-xl border border-border overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all">
-          <img src={`/doodles/${d.filename}`} alt={d.title} className="w-full aspect-square object-cover bg-bg-alt" loading="lazy" />
-          <div className="p-3">
-            <div className="text-[14px] font-bold font-display italic text-text truncate">{d.title}</div>
-            <div className="text-[11px] text-text-4 mt-0.5">{new Date(d.timestamp).toLocaleTimeString()}{d.pushedToGithub && ' · GitHub'}</div>
-            <div className="font-mono text-[8px] text-green/30 mt-1">{d.attestation?.slice(0, 20)}...</div>
+      {[...doodles].reverse().map((d, i) => {
+        const listing = listings.find((l: any) => l.svgFilename === d.filename)
+        return (
+          <div key={i} className={`group bg-surface rounded-xl border overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5 ${listing?.sold ? 'border-border opacity-60' : listing ? 'border-green/20' : 'border-border'}`}>
+            <a href={`/doodles/${d.filename}`} target="_blank" rel="noopener noreferrer">
+              <img src={`/doodles/${d.filename}`} alt={d.title} className="w-full aspect-square object-cover bg-bg-alt" loading="lazy" />
+            </a>
+            <div className="p-3">
+              <div className="text-[14px] font-bold font-display italic text-text truncate">{d.title}</div>
+              <div className="text-[11px] text-text-4 mt-0.5">{new Date(d.timestamp).toLocaleTimeString()}{d.pushedToGithub && ' · GitHub'}</div>
+              {listing && (
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border-light">
+                  <span className="font-mono text-[13px] font-bold text-green">{listing.price} ETH</span>
+                  {listing.sold ? (
+                    <span className="text-[10px] font-bold text-red bg-red-bg px-2 py-0.5 rounded-full">SOLD</span>
+                  ) : (
+                    <button onClick={() => handleBuy(listing.tokenId, listing.price)} disabled={buying === listing.tokenId}
+                      className="text-[10px] font-semibold px-3 py-1 rounded-lg bg-text text-white hover:bg-green transition-colors disabled:opacity-40">
+                      {buying === listing.tokenId ? '...' : 'Buy'}
+                    </button>
+                  )}
+                </div>
+              )}
+              {listing?.mintTxHash && (
+                <a href={`https://sepolia.starkscan.co/tx/${listing.mintTxHash}`} target="_blank" rel="noopener noreferrer" className="block font-mono text-[8px] text-blue mt-1 hover:underline">
+                  tx: {listing.mintTxHash.slice(0, 14)}...
+                </a>
+              )}
+              <div className="font-mono text-[8px] text-green/30 mt-1">{d.attestation?.slice(0, 20)}...</div>
+            </div>
           </div>
-        </a>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -379,7 +450,7 @@ function MarketView() {
   if (!data?.listings?.length) return <div className="text-center py-20 text-text-4"><p className="text-lg font-semibold">No listings yet</p><p className="text-sm mt-1">bob will list art when idle.</p></div>
   return (
     <div className="p-6">
-      {data.wallet && <div className="mb-4 flex items-center gap-3 text-[12px] text-text-3 font-mono"><span>Wallet: {data.wallet.slice(0,8)}...{data.wallet.slice(-6)}</span><span>·</span><span>{parseFloat(data.walletBalance||'0').toFixed(4)} ETH</span><span>·</span><span>Base Sepolia</span></div>}
+      {data.wallet && <div className="mb-4 flex items-center gap-3 text-[12px] text-text-3 font-mono"><span>Wallet: {data.wallet.slice(0,8)}...{data.wallet.slice(-6)}</span><span>·</span><span>{parseFloat(data.walletBalance||'0').toFixed(4)} ETH</span><span>·</span><span>Starknet Sepolia</span></div>}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
         {data.listings.map((l: any) => (
           <div key={l.tokenId} className={`bg-surface rounded-xl border overflow-hidden transition-all ${l.sold ? 'border-border opacity-50' : 'border-green/20 hover:border-green/40 hover:shadow-lg hover:-translate-y-0.5'}`}>
@@ -395,7 +466,7 @@ function MarketView() {
                   </button>
                 )}
               </div>
-              {l.mintTxHash && <a href={`https://sepolia.basescan.org/tx/${l.mintTxHash}`} target="_blank" rel="noopener noreferrer" className="block font-mono text-[9px] text-blue mt-2 hover:underline">tx: {l.mintTxHash.slice(0,14)}...</a>}
+              {l.mintTxHash && <a href={`https://sepolia.starkscan.co/tx/${l.mintTxHash}`} target="_blank" rel="noopener noreferrer" className="block font-mono text-[9px] text-blue mt-2 hover:underline">tx: {l.mintTxHash.slice(0,14)}...</a>}
             </div>
           </div>
         ))}
