@@ -3,393 +3,381 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Digital Organism</title>
+  <title>bob is alive</title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html,body{width:100%;height:100%;background:#030508;color:#e0ecff;font-family:'SF Mono','Fira Code','Cascadia Code',monospace;overflow-x:hidden}
+    html,body{width:100%;height:100%;background:#050508;color:#d0d8e8;font-family:'Inter','SF Pro',-apple-system,system-ui,sans-serif;overflow:hidden}
+    ::selection{background:rgba(12,187,118,0.3)}
 
-    /* ── Layout ── */
-    .shell{display:grid;grid-template-rows:auto 1fr auto;height:100vh}
+    .app{display:flex;flex-direction:column;height:100vh}
 
     /* ── Header ── */
-    .header{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(3,5,8,0.95)}
-    .logo{font-size:14px;font-weight:800;letter-spacing:3px;color:#0cbb76;text-shadow:0 0 20px rgba(12,187,118,0.4)}
-    .status-bar{display:flex;align-items:center;gap:16px}
-    .status-pill{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase}
-    .status-pill .dot{width:8px;height:8px;border-radius:50%;animation:pulse-dot 1.5s infinite}
-    .status-pill.alive .dot{background:#0cbb76;box-shadow:0 0 12px #0cbb76}
-    .status-pill.dead .dot{background:#ff4d61;box-shadow:none;animation:none}
-    .uptime{font-size:10px;color:#556}
-    .balance-display{font-size:13px;font-weight:700;letter-spacing:1px}
+    .hdr{display:flex;align-items:center;padding:16px 28px;gap:20px;border-bottom:1px solid #111}
+    .hdr-left{display:flex;align-items:center;gap:14px}
+    .avatar{width:36px;height:36px;border-radius:50%;background:radial-gradient(circle,#15ff9a,#0a7a4a);box-shadow:0 0 20px rgba(12,187,118,0.3);animation:glow-pulse 2s ease-in-out infinite}
+    .avatar.dead{background:radial-gradient(circle,#444,#222);box-shadow:none;animation:none}
+    .brand{font-size:18px;font-weight:700;color:#e8ecf4;letter-spacing:-0.3px}
+    .brand span{color:#0cbb76}
+    .hdr-status{display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase}
+    .hdr-status.alive{background:rgba(12,187,118,0.1);color:#0cbb76;border:1px solid rgba(12,187,118,0.2)}
+    .hdr-status.dead{background:rgba(255,77,97,0.1);color:#ff4d61;border:1px solid rgba(255,77,97,0.2)}
+    .hdr-status .dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse-dot 1.5s infinite}
+    .hdr-mid{flex:1;display:flex;justify-content:center;gap:4px}
+    .tab{padding:8px 20px;font-size:13px;font-weight:500;color:#556;border-radius:8px;cursor:pointer;transition:all .2s;border:none;background:none;font-family:inherit}
+    .tab:hover{color:#aab;background:rgba(255,255,255,0.03)}
+    .tab.active{color:#e8ecf4;background:rgba(255,255,255,0.06)}
+    .hdr-right{display:flex;align-items:center;gap:16px;font-size:12px;color:#556}
+    .hdr-balance{font-size:15px;font-weight:700;color:#0cbb76;font-variant-numeric:tabular-nums}
 
-    /* ── Balance Bar ── */
-    .balance-bar-wrap{width:100%;height:4px;background:rgba(255,255,255,0.05);position:relative}
-    .balance-bar-fill{height:100%;transition:width 1s ease,background .5s;border-radius:0 2px 2px 0}
+    /* ── Balance strip ── */
+    .bal-strip{height:2px;background:#111}
+    .bal-fill{height:100%;transition:width 1s,background .5s}
 
-    /* ── Main Grid ── */
-    .main{display:grid;grid-template-columns:300px 1fr 260px;gap:0;overflow:hidden}
+    /* ── Main content ── */
+    .content{flex:1;overflow:hidden;position:relative}
+    .view{position:absolute;inset:0;overflow-y:auto;padding:28px;display:none;animation:fadeIn .3s}
+    .view.active{display:block}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
-    /* ── Left: Task Panel ── */
-    .task-panel{border-right:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;overflow:hidden}
-    .panel-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#556;padding:12px 16px 8px;border-bottom:1px solid rgba(255,255,255,0.04)}
-    .task-form{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.04)}
-    .task-form select,.task-form textarea,.task-form button{width:100%;font-family:inherit;font-size:11px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(15,21,40,0.6);color:#e0ecff;outline:none}
-    .task-form select{padding:8px;margin-bottom:6px}
-    .task-form textarea{padding:8px;height:70px;resize:vertical;margin-bottom:6px}
-    .task-form button{background:linear-gradient(135deg,#0cbb76,#0a9060);color:#000;font-weight:700;border:none;padding:9px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:all .2s}
-    .task-form button:hover{transform:scale(1.02);box-shadow:0 0 15px rgba(12,187,118,0.3)}
-    .task-form button:disabled{opacity:0.4;cursor:not-allowed;transform:none}
-    .task-list{flex:1;overflow-y:auto;padding:8px}
-    .task-item{background:rgba(15,21,40,0.4);border:1px solid rgba(255,255,255,0.04);border-radius:6px;padding:8px 10px;margin-bottom:6px;font-size:10px}
-    .task-item .task-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
-    .task-item .task-type{font-weight:700;text-transform:uppercase;letter-spacing:1px}
-    .task-item .task-type.review{color:#ff8c00}
-    .task-item .task-type.research{color:#1f73ff}
-    .task-item .task-type.summarize{color:#a855f7}
-    .task-item .task-type.analyze{color:#ffbf00}
-    .task-item .task-status{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600}
-    .task-item .task-status.pending{background:rgba(255,191,0,0.15);color:#ffbf00}
-    .task-item .task-status.working{background:rgba(31,115,255,0.15);color:#1f73ff}
-    .task-item .task-status.completed{background:rgba(12,187,118,0.15);color:#0cbb76}
-    .task-item .task-status.failed{background:rgba(255,77,97,0.15);color:#ff4d61}
-    .task-item .task-input{color:#8899aa;margin-top:2px;line-height:1.4}
-    .task-item .task-result{color:#b0c0d8;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.04);line-height:1.5;max-height:100px;overflow-y:auto}
-    .task-item .task-reward{font-size:9px;color:#0cbb76;margin-top:3px}
+    /* ═══ BRAIN VIEW ═══ */
+    .brain-grid{display:grid;grid-template-columns:1fr 320px;gap:24px;height:100%}
+    .brain-main{display:flex;flex-direction:column;gap:20px}
 
-    /* ── Center: Organism Core ── */
-    .organism-core{display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}
-    .orb-container{position:relative;width:200px;height:200px;display:flex;align-items:center;justify-content:center}
-    .orb{width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 40% 40%,#15ff9a,#0cbb76,#064a30);box-shadow:0 0 60px rgba(12,187,118,0.3),0 0 120px rgba(12,187,118,0.1),inset 0 0 30px rgba(255,255,255,0.1);animation:heartbeat 1.5s ease-in-out infinite;transition:all 1s}
-    .orb.working{animation-duration:0.8s;box-shadow:0 0 80px rgba(12,187,118,0.5),0 0 160px rgba(12,187,118,0.2),inset 0 0 30px rgba(255,255,255,0.15)}
-    .orb.warning{background:radial-gradient(circle at 40% 40%,#ffdd44,#ffbf00,#8a6500);box-shadow:0 0 60px rgba(255,191,0,0.3),0 0 120px rgba(255,191,0,0.1),inset 0 0 30px rgba(255,255,255,0.1)}
-    .orb.critical{background:radial-gradient(circle at 40% 40%,#ff6666,#ff4d61,#8a1020);box-shadow:0 0 60px rgba(255,77,97,0.3),0 0 120px rgba(255,77,97,0.1),inset 0 0 30px rgba(255,255,255,0.1);animation-duration:0.5s}
-    .orb.dead{background:radial-gradient(circle at 40% 40%,#333,#222,#111);box-shadow:0 0 20px rgba(100,100,100,0.1);animation:none}
-    .orb-ring{position:absolute;width:160px;height:160px;border-radius:50%;border:1px solid rgba(12,187,118,0.15);animation:spin 20s linear infinite}
-    .orb-ring2{position:absolute;width:190px;height:190px;border-radius:50%;border:1px dashed rgba(12,187,118,0.08);animation:spin 35s linear infinite reverse}
-    .orb-label{margin-top:16px;text-align:center}
-    .orb-label .activity{font-size:11px;font-weight:600;color:#556;text-transform:uppercase;letter-spacing:1.5px}
-    .orb-label .task-info{font-size:10px;color:#445;margin-top:4px;max-width:250px}
+    .orb-section{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 0}
+    .orb-wrap{position:relative;width:180px;height:180px;display:flex;align-items:center;justify-content:center}
+    .orb{width:100px;height:100px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#40ffb0,#0cbb76,#064a30);box-shadow:0 0 50px rgba(12,187,118,0.25),0 0 100px rgba(12,187,118,0.08);animation:heartbeat 1.5s ease-in-out infinite;transition:all 1s}
+    .orb.working{animation-duration:0.7s;box-shadow:0 0 70px rgba(12,187,118,0.4)}
+    .orb.warn{background:radial-gradient(circle at 35% 35%,#ffe066,#ffbf00,#8a6500);box-shadow:0 0 50px rgba(255,191,0,0.25)}
+    .orb.crit{background:radial-gradient(circle at 35% 35%,#ff8888,#ff4d61,#8a1020);box-shadow:0 0 50px rgba(255,77,97,0.25);animation-duration:0.4s}
+    .orb.dead{background:radial-gradient(circle at 35% 35%,#333,#1a1a1a);box-shadow:none;animation:none}
+    .orb-ring{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(12,187,118,0.1);animation:spin 25s linear infinite}
+    .orb-ring2{position:absolute;inset:-10px;border-radius:50%;border:1px dashed rgba(12,187,118,0.06);animation:spin 40s linear infinite reverse}
+    .orb-activity{margin-top:16px;font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#445}
+    .orb-task{font-size:11px;color:#334;margin-top:4px;max-width:300px;text-align:center}
 
-    /* ── Death overlay ── */
-    .death-overlay{position:absolute;inset:0;background:rgba(3,5,8,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.8s}
-    .death-overlay.visible{opacity:1;pointer-events:auto}
-    .death-overlay .death-text{font-size:28px;font-weight:900;letter-spacing:6px;color:#ff4d61;text-shadow:0 0 30px rgba(255,77,97,0.4)}
-    .death-overlay .death-sub{font-size:11px;color:#556;margin-top:8px}
+    /* Console stream */
+    .console{background:#0a0b0f;border:1px solid #151820;border-radius:10px;padding:14px;flex:1;overflow-y:auto;font-family:'SF Mono','Fira Code',monospace;font-size:11px;line-height:1.7;color:#667}
+    .console .line{border-bottom:1px solid #0d0e12;padding:2px 0}
+    .console .line .ts{color:#334}
+    .console .line .tag{font-weight:600}
+    .console .tag.earn{color:#0cbb76}
+    .console .tag.burn{color:#ff4d61}
+    .console .tag.task{color:#1f73ff}
+    .console .tag.doodle{color:#a855f7}
+    .console .tag.improve{color:#ffbf00}
 
-    /* ── Right: Metabolism Panel ── */
-    .metabolism-panel{border-left:1px solid rgba(255,255,255,0.05);padding:16px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
-    .metric{display:flex;flex-direction:column;gap:2px}
-    .metric-label{font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#445}
-    .metric-value{font-size:16px;font-weight:700;letter-spacing:1px}
-    .metric-value.green{color:#0cbb76}
-    .metric-value.red{color:#ff4d61}
-    .metric-value.gold{color:#ffbf00}
-    .metric-value.white{color:#e0ecff}
-    .metric-sub{font-size:9px;color:#334}
+    /* Sidebar metrics */
+    .sidebar{display:flex;flex-direction:column;gap:12px}
+    .metric-card{background:#0a0b0f;border:1px solid #151820;border-radius:10px;padding:14px}
+    .mc-label{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#445;margin-bottom:4px}
+    .mc-value{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+    .mc-sub{font-size:10px;color:#334;margin-top:2px}
+    .mc-bar{width:100%;height:4px;background:#151820;border-radius:2px;margin-top:6px;overflow:hidden}
+    .mc-bar-fill{height:100%;border-radius:2px;transition:width 1s,background .5s}
+    .green{color:#0cbb76}.red{color:#ff4d61}.gold{color:#ffbf00}.white{color:#d0d8e8}
 
-    .ttd-bar{width:100%;height:6px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;margin-top:4px}
-    .ttd-bar-fill{height:100%;border-radius:3px;transition:width 1s ease,background .5s}
+    /* ═══ GALLERY VIEW ═══ */
+    .gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+    .doodle-card{background:#0a0b0f;border:1px solid #151820;border-radius:10px;overflow:hidden;transition:transform .2s,border-color .2s;cursor:pointer}
+    .doodle-card:hover{transform:translateY(-2px);border-color:#252830}
+    .doodle-card img{width:100%;aspect-ratio:1;object-fit:cover;background:#050508}
+    .doodle-card .dc-info{padding:10px 12px}
+    .doodle-card .dc-title{font-size:12px;font-weight:600;color:#aab;margin-bottom:2px}
+    .doodle-card .dc-meta{font-size:10px;color:#445}
+    .doodle-card .dc-attest{font-size:8px;color:#0cbb76;font-family:monospace;margin-top:4px;opacity:0.6}
+    .gallery-empty{text-align:center;padding:60px;color:#334;font-size:13px}
 
-    /* ── Footer: Attestation ── */
-    .footer{display:flex;align-items:center;justify-content:center;gap:16px;padding:8px 24px;border-top:1px solid rgba(255,255,255,0.05);background:rgba(3,5,8,0.95)}
-    .badge{display:flex;align-items:center;gap:5px;font-size:9px;color:#0cbb76;font-weight:600;letter-spacing:1px}
-    .badge .dot{width:5px;height:5px;border-radius:50%;background:#0cbb76;box-shadow:0 0 6px #0cbb76;animation:pulse-dot 2s infinite}
-    .badge.warn{color:#ffbf00}
-    .badge.warn .dot{background:#ffbf00;box-shadow:0 0 6px #ffbf00}
+    /* ═══ TASKS VIEW ═══ */
+    .tasks-layout{display:grid;grid-template-columns:340px 1fr;gap:24px}
+    .task-form-wrap{background:#0a0b0f;border:1px solid #151820;border-radius:10px;padding:20px}
+    .tf-title{font-size:13px;font-weight:600;margin-bottom:12px;color:#aab}
+    .tf-select,.tf-textarea{width:100%;font-family:inherit;font-size:12px;border-radius:8px;border:1px solid #1a1d25;background:#0d0e14;color:#d0d8e8;outline:none;padding:10px 12px;margin-bottom:10px;transition:border-color .2s}
+    .tf-select:focus,.tf-textarea:focus{border-color:#0cbb76}
+    .tf-textarea{height:120px;resize:vertical;font-family:'SF Mono','Fira Code',monospace;font-size:11px}
+    .tf-btn{width:100%;padding:12px;background:#0cbb76;color:#050508;font-family:inherit;font-size:13px;font-weight:700;border:none;border-radius:8px;cursor:pointer;letter-spacing:0.5px;transition:all .2s}
+    .tf-btn:hover{background:#10d888;transform:translateY(-1px)}
+    .tf-btn:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+    .task-list{display:flex;flex-direction:column;gap:10px}
+    .task-card{background:#0a0b0f;border:1px solid #151820;border-radius:10px;padding:14px}
+    .tc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+    .tc-type{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px}
+    .tc-type.review{color:#ff8c00}.tc-type.research{color:#1f73ff}.tc-type.summarize{color:#a855f7}.tc-type.analyze{color:#ffbf00}
+    .tc-status{font-size:9px;font-weight:600;padding:3px 8px;border-radius:4px}
+    .tc-status.pending{background:rgba(255,191,0,0.1);color:#ffbf00}
+    .tc-status.working{background:rgba(31,115,255,0.1);color:#1f73ff}
+    .tc-status.completed{background:rgba(12,187,118,0.1);color:#0cbb76}
+    .tc-status.failed{background:rgba(255,77,97,0.1);color:#ff4d61}
+    .tc-input{font-size:11px;color:#667;line-height:1.5;margin-bottom:6px}
+    .tc-result{font-size:11px;color:#99a8b8;line-height:1.6;padding:10px;background:#08090d;border-radius:6px;max-height:200px;overflow-y:auto;white-space:pre-wrap}
+    .tc-reward{font-size:10px;color:#0cbb76;margin-top:6px}
 
-    @keyframes heartbeat{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
-    @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.3}}
+    /* ── Footer ── */
+    .ftr{display:flex;align-items:center;justify-content:center;gap:20px;padding:10px 28px;border-top:1px solid #111;font-size:10px;color:#334}
+    .ftr-badge{display:flex;align-items:center;gap:5px;color:#0cbb76}
+    .ftr-badge .dot{width:4px;height:4px;border-radius:50%;background:currentColor;box-shadow:0 0 4px currentColor}
+    .ftr-badge.warn{color:#ffbf00}
+
+    /* Death overlay */
+    .death{position:fixed;inset:0;background:rgba(5,5,8,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;opacity:0;pointer-events:none;transition:opacity .8s}
+    .death.show{opacity:1;pointer-events:auto}
+    .death h1{font-size:36px;font-weight:800;letter-spacing:8px;color:#ff4d61;text-shadow:0 0 40px rgba(255,77,97,0.3)}
+    .death p{color:#445;margin-top:8px;font-size:12px}
+
+    @keyframes heartbeat{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+    @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.25}}
     @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-
-    @media(max-width:800px){.main{grid-template-columns:1fr}.task-panel,.metabolism-panel{display:none}}
+    @keyframes glow-pulse{0%,100%{box-shadow:0 0 20px rgba(12,187,118,0.3)}50%{box-shadow:0 0 30px rgba(12,187,118,0.5)}}
   </style>
 </head>
 <body>
-
-<div class="shell">
+<div class="app">
   <!-- Header -->
-  <div>
-    <div class="header">
-      <div class="logo">DIGITAL ORGANISM</div>
-      <div class="status-bar">
-        <div class="status-pill alive" id="status-pill"><span class="dot"></span><span id="status-text">ALIVE</span></div>
-        <div class="uptime" id="uptime">0s</div>
-        <div class="balance-display" id="balance-display">100.0 cr</div>
-      </div>
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="avatar" id="avatar"></div>
+      <div class="brand"><span>bob</span> is alive</div>
+      <div class="hdr-status alive" id="hdr-status"><span class="dot"></span><span id="status-txt">ALIVE</span></div>
     </div>
-    <div class="balance-bar-wrap"><div class="balance-bar-fill" id="balance-bar" style="width:100%;background:#0cbb76"></div></div>
+    <div class="hdr-mid">
+      <button class="tab active" data-view="brain" onclick="switchTab('brain')">The Brain</button>
+      <button class="tab" data-view="gallery" onclick="switchTab('gallery')">Gallery</button>
+      <button class="tab" data-view="tasks" onclick="switchTab('tasks')">Tasks</button>
+    </div>
+    <div class="hdr-right">
+      <span id="hdr-uptime">0s</span>
+      <span class="hdr-balance" id="hdr-bal">100.0 cr</span>
+    </div>
   </div>
+  <div class="bal-strip"><div class="bal-fill" id="bal-fill" style="width:100%;background:#0cbb76"></div></div>
 
-  <!-- Main -->
-  <div class="main">
-    <!-- Left: Tasks -->
-    <div class="task-panel">
-      <div class="panel-title">Submit Task</div>
-      <div class="task-form">
-        <select id="task-type">
-          <option value="review">Code Review (+5 cr)</option>
-          <option value="research">Research (+8 cr)</option>
-          <option value="summarize">Summarize (+3 cr)</option>
-          <option value="analyze">Analyze (+6 cr)</option>
-        </select>
-        <textarea id="task-input" placeholder="Paste code, ask a question, or submit text..."></textarea>
-        <button id="task-btn" onclick="submitTask()">SUBMIT TASK</button>
-      </div>
-      <div class="panel-title">Task Queue</div>
-      <div class="task-list" id="task-list"></div>
-    </div>
-
-    <!-- Center: Organism -->
-    <div class="organism-core">
-      <div class="orb-container">
-        <div class="orb-ring"></div>
-        <div class="orb-ring2"></div>
-        <div class="orb" id="orb"></div>
-      </div>
-      <div class="orb-label">
-        <div class="activity" id="activity">INITIALIZING</div>
-        <div class="task-info" id="task-info"></div>
-      </div>
-      <div class="death-overlay" id="death-overlay">
-        <div class="death-text">DECEASED</div>
-        <div class="death-sub" id="death-sub">Balance depleted. No human bailout.</div>
+  <!-- Views -->
+  <div class="content">
+    <!-- BRAIN -->
+    <div class="view active" id="view-brain">
+      <div class="brain-grid">
+        <div class="brain-main">
+          <div class="orb-section">
+            <div class="orb-wrap">
+              <div class="orb-ring"></div>
+              <div class="orb-ring2"></div>
+              <div class="orb" id="orb"></div>
+            </div>
+            <div class="orb-activity" id="activity">INITIALIZING</div>
+            <div class="orb-task" id="task-info"></div>
+          </div>
+          <div class="console" id="console"></div>
+        </div>
+        <div class="sidebar">
+          <div class="metric-card"><div class="mc-label">Balance</div><div class="mc-value green" id="m-bal">100.00</div><div class="mc-sub">credits</div><div class="mc-bar"><div class="mc-bar-fill" id="m-bal-bar" style="width:100%;background:#0cbb76"></div></div></div>
+          <div class="metric-card"><div class="mc-label">Time to Death</div><div class="mc-value gold" id="m-ttd">--</div><div class="mc-bar"><div class="mc-bar-fill" id="m-ttd-bar" style="width:100%;background:#0cbb76"></div></div></div>
+          <div class="metric-card"><div class="mc-label">Burn Rate</div><div class="mc-value red" id="m-burn">0.000</div><div class="mc-sub">cr/sec</div></div>
+          <div class="metric-card"><div class="mc-label">Earn Rate</div><div class="mc-value green" id="m-earn">0.000</div><div class="mc-sub">cr/sec</div></div>
+          <div class="metric-card"><div class="mc-label">Tasks Done</div><div class="mc-value white" id="m-tasks">0</div></div>
+          <div class="metric-card"><div class="mc-label">Doodles Created</div><div class="mc-value" style="color:#a855f7" id="m-doodles">0</div></div>
+          <div class="metric-card"><div class="mc-label">Efficiency</div><div class="mc-value gold" id="m-eff">0%</div></div>
+          <div class="metric-card"><div class="mc-label">Identity</div><div class="mc-value white" id="m-fp" style="font-size:12px;font-family:monospace">--</div></div>
+        </div>
       </div>
     </div>
 
-    <!-- Right: Metabolism -->
-    <div class="metabolism-panel">
-      <div class="panel-title">Metabolism</div>
-      <div class="metric">
-        <div class="metric-label">Balance</div>
-        <div class="metric-value green" id="m-balance">100.0</div>
-        <div class="metric-sub">credits</div>
+    <!-- GALLERY -->
+    <div class="view" id="view-gallery">
+      <div class="gallery-grid" id="gallery-grid">
+        <div class="gallery-empty">No doodles yet. The organism creates art when idle.</div>
       </div>
-      <div class="metric">
-        <div class="metric-label">Time to Death</div>
-        <div class="metric-value gold" id="m-ttd">--</div>
-        <div class="ttd-bar"><div class="ttd-bar-fill" id="ttd-bar" style="width:100%;background:#0cbb76"></div></div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Burn Rate</div>
-        <div class="metric-value red" id="m-burn">0.000</div>
-        <div class="metric-sub">cr/sec</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Earn Rate</div>
-        <div class="metric-value green" id="m-earn">0.000</div>
-        <div class="metric-sub">cr/sec</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Net Rate</div>
-        <div class="metric-value white" id="m-net">0.000</div>
-        <div class="metric-sub">cr/sec</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Tasks Completed</div>
-        <div class="metric-value white" id="m-tasks">0</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Total Earned</div>
-        <div class="metric-value green" id="m-earned">0.00</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Total Spent</div>
-        <div class="metric-value red" id="m-spent">0.00</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Efficiency</div>
-        <div class="metric-value gold" id="m-eff">0%</div>
-      </div>
-      <div class="panel-title" style="margin-top:8px">Identity</div>
-      <div class="metric">
-        <div class="metric-label">Fingerprint</div>
-        <div class="metric-value white" id="m-fp" style="font-size:11px">--</div>
+    </div>
+
+    <!-- TASKS -->
+    <div class="view" id="view-tasks">
+      <div class="tasks-layout">
+        <div class="task-form-wrap">
+          <div class="tf-title">Submit a Task</div>
+          <select class="tf-select" id="task-type">
+            <option value="review">Code Review (+5 cr)</option>
+            <option value="research">Research (+8 cr)</option>
+            <option value="summarize">Summarize (+3 cr)</option>
+            <option value="analyze">Analyze (+6 cr)</option>
+          </select>
+          <textarea class="tf-textarea" id="task-input" placeholder="Paste code, ask a question, or submit text for analysis..."></textarea>
+          <button class="tf-btn" id="task-btn" onclick="submitTask()">Submit Task</button>
+        </div>
+        <div class="task-list" id="task-list"></div>
       </div>
     </div>
   </div>
 
   <!-- Footer -->
-  <div class="footer">
-    <div class="badge" id="badge-tee"><span class="dot"></span>TEE Attestation</div>
-    <div class="badge" id="badge-ed25519"><span class="dot"></span>Ed25519 Signatures</div>
-    <div class="badge" id="badge-research"><span class="dot"></span>Web Research</div>
-    <div class="badge" id="badge-llm"><span class="dot"></span>LLM: --</div>
+  <div class="ftr">
+    <div class="ftr-badge" id="f-tee"><span class="dot"></span>TEE Attestation</div>
+    <div class="ftr-badge" id="f-ed"><span class="dot"></span>Ed25519</div>
+    <div class="ftr-badge" id="f-res"><span class="dot"></span>Tavily Research</div>
+    <div class="ftr-badge" id="f-llm"><span class="dot"></span><span id="f-llm-txt">LLM</span></div>
   </div>
 </div>
 
+<div class="death" id="death"><h1>DECEASED</h1><p>Balance depleted. No human bailout.</p></div>
+
 <script>
-// ── State ──
-let hb = null; // heartbeat data
-let tasks = [];
+let hb=null,tasks=[],doodles=[],orgData=null,consoleLines=[];
+
+// ── Tabs ──
+window.switchTab=function(v){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===v));
+  document.querySelectorAll('.view').forEach(el=>el.classList.toggle('active',el.id==='view-'+v));
+  if(v==='gallery')pollDoodles();
+  if(v==='tasks')pollTasks();
+};
 
 // ── Polling ──
-async function poll() {
-  try {
-    const [hbRes, tasksRes] = await Promise.all([
-      fetch('/api/heartbeat').then(r => r.json()).catch(() => null),
-      fetch('/api/tasks').then(r => r.json()).catch(() => []),
-    ]);
-    if (hbRes) hb = hbRes;
-    if (tasksRes) tasks = tasksRes;
-    updateUI();
-  } catch(e) { console.warn('Poll error', e); }
+async function poll(){
+  try{
+    const r=await fetch('/api/heartbeat').then(r=>r.json()).catch(()=>null);
+    if(r)hb=r;
+    updateBrain();
+  }catch{}
+}
+async function pollOrg(){
+  try{
+    orgData=await fetch('/api/organism').then(r=>r.json()).catch(()=>null);
+    updateMeta();
+  }catch{}
+}
+async function pollTasks(){
+  try{tasks=await fetch('/api/tasks').then(r=>r.json()).catch(()=>[]);renderTasks();}catch{}
+}
+async function pollDoodles(){
+  try{doodles=await fetch('/api/doodles').then(r=>r.json()).catch(()=>[]);renderGallery();}catch{}
+}
+async function pollEarnings(){
+  try{
+    const log=await fetch('/api/earnings').then(r=>r.json()).catch(()=>[]);
+    consoleLines=log.slice(-40).map(e=>{
+      const t=new Date(e.timestamp).toLocaleTimeString();
+      const tag=e.type;
+      return{ts:t,tag,text:e.description+' ('+e.amount.toFixed(3)+' cr → '+e.balance.toFixed(2)+')'};
+    });
+    renderConsole();
+  }catch{}
 }
 
-// Fetch organism details less frequently
-let orgData = null;
-async function pollOrg() {
-  try {
-    orgData = await fetch('/api/organism').then(r => r.json()).catch(() => null);
-    updateBadges();
-  } catch {}
-}
-
-function updateUI() {
-  if (!hb) return;
-
+function updateBrain(){
+  if(!hb)return;
   // Status
-  const pill = document.getElementById('status-pill');
-  const statusText = document.getElementById('status-text');
-  if (hb.alive) {
-    pill.className = 'status-pill alive';
-    statusText.textContent = 'ALIVE';
-  } else {
-    pill.className = 'status-pill dead';
-    statusText.textContent = 'DEAD';
-    document.getElementById('death-overlay').classList.add('visible');
-  }
+  const alive=hb.alive;
+  document.getElementById('hdr-status').className='hdr-status '+(alive?'alive':'dead');
+  document.getElementById('status-txt').textContent=alive?'ALIVE':'DEAD';
+  document.getElementById('avatar').className='avatar'+(alive?'':' dead');
+  if(!alive)document.getElementById('death').classList.add('show');
 
   // Uptime
-  const m = Math.floor(hb.uptime / 60);
-  const s = Math.floor(hb.uptime % 60);
-  document.getElementById('uptime').textContent = m > 0 ? `${m}m ${s}s` : `${s}s`;
+  const m=Math.floor(hb.uptime/60),s=Math.floor(hb.uptime%60);
+  document.getElementById('hdr-uptime').textContent=m>0?m+'m '+s+'s':s+'s';
 
   // Balance
-  const bal = hb.balance;
-  document.getElementById('balance-display').textContent = bal.toFixed(1) + ' cr';
-  document.getElementById('m-balance').textContent = bal.toFixed(2);
-  const pct = Math.max(0, Math.min(100, bal));
-  const bar = document.getElementById('balance-bar');
-  bar.style.width = pct + '%';
-  bar.style.background = bal > 30 ? '#0cbb76' : bal > 10 ? '#ffbf00' : '#ff4d61';
-  document.getElementById('m-balance').className = 'metric-value ' + (bal > 30 ? 'green' : bal > 10 ? 'gold' : 'red');
+  const b=hb.balance;
+  document.getElementById('hdr-bal').textContent=b.toFixed(1)+' cr';
+  document.getElementById('hdr-bal').style.color=b>30?'#0cbb76':b>10?'#ffbf00':'#ff4d61';
+  const pct=Math.max(0,Math.min(100,b));
+  const bf=document.getElementById('bal-fill');
+  bf.style.width=pct+'%';
+  bf.style.background=b>30?'#0cbb76':b>10?'#ffbf00':'#ff4d61';
 
   // Orb
-  const orb = document.getElementById('orb');
-  if (!hb.alive) orb.className = 'orb dead';
-  else if (hb.activity === 'working') orb.className = bal > 30 ? 'orb working' : bal > 10 ? 'orb working warning' : 'orb working critical';
-  else orb.className = bal > 30 ? 'orb' : bal > 10 ? 'orb warning' : 'orb critical';
+  const o=document.getElementById('orb');
+  if(!alive)o.className='orb dead';
+  else if(hb.activity==='working'||hb.activity==='self-work')o.className='orb working'+(b<10?' crit':b<30?' warn':'');
+  else o.className='orb'+(b<10?' crit':b<30?' warn':'');
 
   // Activity
-  const actMap = { idle: 'IDLE', scanning: 'SCANNING', working: 'WORKING', 'self-work': 'SELF-MAINTENANCE' };
-  document.getElementById('activity').textContent = hb.alive ? (actMap[hb.activity] || hb.activity.toUpperCase()) : 'OFFLINE';
+  const am={idle:'IDLE',scanning:'SCANNING',working:'WORKING','self-work':'CREATING ART'};
+  document.getElementById('activity').textContent=alive?(am[hb.activity]||hb.activity.toUpperCase()):'OFFLINE';
 
-  // Task info
-  const current = hb.currentTaskId ? tasks.find(t => t.id === hb.currentTaskId) : null;
-  document.getElementById('task-info').textContent = current ? `${current.type}: "${current.input.slice(0, 50)}..."` : '';
+  // Metrics
+  document.getElementById('m-bal').textContent=b.toFixed(2);
+  document.getElementById('m-bal').className='mc-value '+(b>30?'green':b>10?'gold':'red');
+  const bb=document.getElementById('m-bal-bar');bb.style.width=pct+'%';bb.style.background=b>30?'#0cbb76':b>10?'#ffbf00':'#ff4d61';
 
-  // TTD
-  const ttd = hb.ttd;
-  if (ttd > 0) {
-    const tm = Math.floor(ttd / 60);
-    const ts2 = Math.floor(ttd % 60);
-    document.getElementById('m-ttd').textContent = tm > 0 ? `${tm}m ${ts2}s` : `${ts2}s`;
-    const ttdPct = Math.min(100, (ttd / 600) * 100); // 10 min = 100%
-    const ttdBar = document.getElementById('ttd-bar');
-    ttdBar.style.width = ttdPct + '%';
-    ttdBar.style.background = ttd > 180 ? '#0cbb76' : ttd > 60 ? '#ffbf00' : '#ff4d61';
-  } else {
-    document.getElementById('m-ttd').textContent = hb.alive ? 'STABLE' : 'DEAD';
-  }
+  const ttd=hb.ttd;
+  if(ttd>0){const tm=Math.floor(ttd/60),ts2=Math.floor(ttd%60);document.getElementById('m-ttd').textContent=tm>0?tm+'m '+ts2+'s':ts2+'s';
+    const tp=Math.min(100,(ttd/600)*100);const tb=document.getElementById('m-ttd-bar');tb.style.width=tp+'%';tb.style.background=ttd>180?'#0cbb76':ttd>60?'#ffbf00':'#ff4d61';
+  }else document.getElementById('m-ttd').textContent=alive?'STABLE':'DEAD';
 
-  // Metabolism metrics
-  document.getElementById('m-burn').textContent = hb.burnRate.toFixed(4);
-  document.getElementById('m-earn').textContent = hb.earnRate.toFixed(4);
-  const net = hb.netRate;
-  const netEl = document.getElementById('m-net');
-  netEl.textContent = (net >= 0 ? '+' : '') + net.toFixed(4);
-  netEl.className = 'metric-value ' + (net >= 0 ? 'green' : 'red');
-  document.getElementById('m-tasks').textContent = hb.tasksCompleted;
-
-  if (orgData) {
-    document.getElementById('m-earned').textContent = orgData.totalEarned?.toFixed(2) || '0';
-    document.getElementById('m-spent').textContent = orgData.totalSpent?.toFixed(2) || '0';
-    const eff = orgData.metabolism?.efficiency || 0;
-    document.getElementById('m-eff').textContent = (eff * 100).toFixed(0) + '%';
-    document.getElementById('m-fp').textContent = orgData.identity?.fingerprint || '--';
-  }
-
-  // Tasks
-  renderTasks();
-
-  // Disable submit if dead
-  document.getElementById('task-btn').disabled = !hb.alive;
+  document.getElementById('m-burn').textContent=hb.burnRate.toFixed(4);
+  document.getElementById('m-earn').textContent=hb.earnRate.toFixed(4);
+  document.getElementById('m-tasks').textContent=hb.tasksCompleted;
 }
 
-function renderTasks() {
-  const list = document.getElementById('task-list');
-  if (!tasks.length) { list.innerHTML = '<div style="color:#334;font-size:10px;padding:8px">No tasks yet</div>'; return; }
+function updateMeta(){
+  if(!orgData)return;
+  document.getElementById('m-eff').textContent=((orgData.metabolism?.efficiency||0)*100).toFixed(0)+'%';
+  document.getElementById('m-fp').textContent=orgData.identity?.fingerprint||'--';
+  const tee=orgData.tee?.teeMode;
+  document.getElementById('f-tee').className='ftr-badge'+(tee?'':' warn');
+  document.getElementById('f-llm-txt').textContent='LLM: '+(orgData.llm?.provider||'?')+'/'+(orgData.llm?.model||'?');
+}
 
-  list.innerHTML = tasks.slice(0, 20).map(t => `
-    <div class="task-item">
-      <div class="task-head">
-        <span class="task-type ${t.type}">${t.type}</span>
-        <span class="task-status ${t.status}">${t.status}</span>
+function renderConsole(){
+  const el=document.getElementById('console');
+  el.innerHTML=consoleLines.map(l=>`<div class="line"><span class="ts">${l.ts}</span> <span class="tag ${l.tag}">[${l.tag.toUpperCase()}]</span> ${esc(l.text)}</div>`).join('');
+  el.scrollTop=el.scrollHeight;
+}
+
+function renderGallery(){
+  const el=document.getElementById('gallery-grid');
+  if(!doodles.length){el.innerHTML='<div class="gallery-empty">No doodles yet. The organism creates art when idle.</div>';return;}
+  document.getElementById('m-doodles').textContent=doodles.length;
+  el.innerHTML=doodles.slice().reverse().map(d=>`
+    <div class="doodle-card" onclick="window.open('/doodles/${esc(d.filename)}','_blank')">
+      <img src="/doodles/${esc(d.filename)}" alt="${esc(d.title)}" loading="lazy"/>
+      <div class="dc-info">
+        <div class="dc-title">${esc(d.title)}</div>
+        <div class="dc-meta">${new Date(d.timestamp).toLocaleTimeString()}${d.pushedToGithub?' &middot; on GitHub':''}</div>
+        <div class="dc-attest">${d.attestation?.slice(0,32)||''}...</div>
       </div>
-      <div class="task-input">${esc(t.input.slice(0, 80))}${t.input.length > 80 ? '...' : ''}</div>
-      ${t.result ? `<div class="task-result">${esc(t.result.slice(0, 300))}${t.result.length > 300 ? '...' : ''}</div>` : ''}
-      ${t.status === 'completed' ? `<div class="task-reward">+${t.reward} cr earned | ${t.tokensUsed} tokens | cost ${t.costIncurred?.toFixed(3) || '?'} cr</div>` : ''}
     </div>
   `).join('');
 }
 
-function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-function updateBadges() {
-  if (!orgData) return;
-  const tee = orgData.tee?.teeMode;
-  document.getElementById('badge-tee').className = 'badge' + (tee ? '' : ' warn');
-  document.getElementById('badge-tee').querySelector('span:last-child') && (document.getElementById('badge-tee').lastChild.textContent = tee ? 'Intel TDX Enclave' : 'Local Dev Mode');
-
-  const research = orgData.research?.enabled;
-  document.getElementById('badge-research').className = 'badge' + (research ? '' : ' warn');
-
-  const llm = orgData.llm;
-  if (llm) document.getElementById('badge-llm').lastChild.textContent = `LLM: ${llm.provider}/${llm.model}`;
+function renderTasks(){
+  const el=document.getElementById('task-list');
+  if(!tasks.length){el.innerHTML='<div style="color:#334;padding:20px;text-align:center">No tasks yet. Submit one to keep the organism alive.</div>';return;}
+  el.innerHTML=tasks.slice(0,15).map(t=>`
+    <div class="task-card">
+      <div class="tc-head">
+        <span class="tc-type ${t.type}">${t.type}</span>
+        <span class="tc-status ${t.status}">${t.status}</span>
+      </div>
+      <div class="tc-input">${esc(t.input.slice(0,120))}${t.input.length>120?'...':''}</div>
+      ${t.result?`<div class="tc-result">${esc(t.result)}</div>`:''}
+      ${t.status==='completed'?`<div class="tc-reward">+${t.reward} cr earned &middot; ${t.tokensUsed} tokens &middot; cost ${(t.costIncurred||0).toFixed(3)} cr</div>`:''}
+    </div>
+  `).join('');
 }
 
+function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
 // ── Submit Task ──
-window.submitTask = async function() {
-  const type = document.getElementById('task-type').value;
-  const input = document.getElementById('task-input').value.trim();
-  if (!input || input.length < 3) return;
-
-  const btn = document.getElementById('task-btn');
-  btn.disabled = true; btn.textContent = 'SUBMITTING...';
-
-  try {
-    const res = await fetch('/api/task', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type, input }),
-    });
-    if (res.ok) {
-      document.getElementById('task-input').value = '';
-      btn.textContent = 'SUBMITTED';
-      setTimeout(() => poll(), 500);
-    } else {
-      const data = await res.json();
-      btn.textContent = data.error || 'ERROR';
-    }
-  } catch { btn.textContent = 'OFFLINE'; }
-  setTimeout(() => { btn.textContent = 'SUBMIT TASK'; btn.disabled = false; }, 1500);
+window.submitTask=async function(){
+  const type=document.getElementById('task-type').value;
+  const input=document.getElementById('task-input').value.trim();
+  if(!input||input.length<3)return;
+  const btn=document.getElementById('task-btn');
+  btn.disabled=true;btn.textContent='Submitting...';
+  try{
+    const r=await fetch('/api/task',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,input})});
+    if(r.ok){document.getElementById('task-input').value='';btn.textContent='Submitted!';setTimeout(()=>pollTasks(),1000);}
+    else{const d=await r.json();btn.textContent=d.error||'Error';}
+  }catch{btn.textContent='Offline';}
+  setTimeout(()=>{btn.textContent='Submit Task';btn.disabled=false;},1500);
 };
 
 // ── Boot ──
-poll();
-pollOrg();
-setInterval(poll, 2000);
-setInterval(pollOrg, 10000);
+poll();pollOrg();pollEarnings();pollDoodles();
+setInterval(poll,2000);
+setInterval(pollOrg,10000);
+setInterval(pollEarnings,5000);
+setInterval(pollDoodles,15000);
+setInterval(pollTasks,8000);
 </script>
 </body>
 </html>

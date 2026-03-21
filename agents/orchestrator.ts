@@ -24,7 +24,9 @@ import { initThinker, getSystemPromptHash, getModelName, getActiveLLMProvider } 
 import { initResearch, isSearchEnabled } from "./research";
 import { buildAttestation } from "./keystore";
 import type { LLMConfig, TaskType } from "./organism-types";
-import { getResearchLog } from "./self-work";
+import { getDoodleLog, getImprovementLog } from "./self-work";
+import { getRecentEntries } from "./monologue";
+import { initNFT, isNFTEnabled, getWalletAddress, getWalletBalance, getListings, getAvailableListings, buyDoodle } from "./nft";
 import { TASK_REWARDS } from "./organism-types";
 
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -113,6 +115,9 @@ initThinker(llmConfig);
 initLLMClient(llmConfig);
 initResearch();
 
+// ── NFT / On-Chain ────────────────────────────────────────────────────────────
+const nftState = initNFT();
+
 // ── Organism ──────────────────────────────────────────────────────────────────
 
 const organism = new DigitalOrganism();
@@ -144,6 +149,7 @@ if (!fs.existsSync(path.join(dashboardDir, "index.html"))) {
   dashboardDir = path.join(__dirname, "..", "..", "dashboard");
 }
 app.use(express.static(dashboardDir));
+app.use("/doodles", express.static(path.join(process.cwd(), "doodles")));
 const dashboardIndex = path.join(dashboardDir, "index.html");
 app.get(["/", "/dashboard", "/dashboard/"], (_req, res) => res.sendFile(dashboardIndex));
 
@@ -182,6 +188,7 @@ app.get("/api/organism", (_req, res) => {
       instanceId: process.env.EIGENCOMPUTE_INSTANCE_ID || "local-dev",
     },
     research: { enabled: isSearchEnabled() },
+    nft: { enabled: isNFTEnabled(), wallet: getWalletAddress(), chain: "Base Sepolia" },
     llm: { provider: getActiveLLMProvider(), model: getModelName() },
   });
 });
@@ -260,9 +267,50 @@ app.get("/api/proof", (_req, res) => {
   });
 });
 
-// Self-research log
-app.get("/api/research", (_req, res) => {
-  res.json(getResearchLog());
+// Internal monologue (Sovra-style "The Brain")
+app.get("/api/monologue", (_req, res) => {
+  res.json(getRecentEntries(60));
+});
+
+// Doodle art log
+app.get("/api/doodles", (_req, res) => {
+  res.json(getDoodleLog());
+});
+
+// Self-improvement log
+app.get("/api/improvements", (_req, res) => {
+  res.json(getImprovementLog());
+});
+
+// ── NFT Marketplace ───────────────────────────────────────────────────────────
+
+// All listings
+app.get("/api/nft/listings", async (_req, res) => {
+  const ethBal = await getWalletBalance();
+  res.json({
+    enabled: isNFTEnabled(),
+    wallet: getWalletAddress(),
+    walletBalance: ethBal,
+    chain: "Base Sepolia",
+    listings: getListings(),
+    available: getAvailableListings(),
+  });
+});
+
+// Buy a doodle
+app.post("/api/nft/buy", async (req, res) => {
+  const { tokenId, buyerAddress } = req.body as { tokenId?: number; buyerAddress?: string };
+  if (!tokenId || !buyerAddress) return res.status(400).json({ error: "tokenId and buyerAddress required" });
+
+  const listing = await buyDoodle(tokenId, buyerAddress);
+  if (!listing) return res.status(404).json({ error: "Listing not found or already sold" });
+
+  // Credit the organism for the sale
+  const ethPrice = parseFloat(listing.price);
+  const creditBonus = ethPrice * 10000; // Convert ETH price to credits (generous for demo)
+  organism.metabolism.earn(creditBonus, `NFT sale: "${listing.title}" for ${listing.price} ETH`, `nft-${tokenId}`);
+
+  res.json({ ok: true, listing, creditsEarned: creditBonus });
 });
 
 // Available task types + pricing

@@ -15,6 +15,7 @@ import { generateKeypair } from "./keystore";
 import { Metabolism } from "./metabolism";
 import { getNextPendingTask, executeTask } from "./task-engine";
 import { doSelfWork } from "./self-work";
+import { emit, getRandomThought } from "./monologue";
 import type { OrganismState, ActivityState } from "./organism-types";
 import { COSTS } from "./organism-types";
 
@@ -55,6 +56,7 @@ export class DigitalOrganism {
       this.keypair.publicKey
     );
 
+    emit("system", `Organism born with ${COSTS.STARTING_BALANCE} credits. Identity: ${this.keypair.fingerprint}`);
     console.log(`[ORGANISM] Born with ${COSTS.STARTING_BALANCE} credits`);
     console.log(`[ORGANISM] Identity: ${this.keypair.fingerprint}`);
     console.log(`[ORGANISM] Public key: ${this.keypair.publicKey.slice(0, 32)}...`);
@@ -78,10 +80,18 @@ export class DigitalOrganism {
     // 3. Sync state from metabolism
     this.syncState();
 
+    // Emit periodic thoughts
+    if (this.state.tickCount % 4 === 0) {
+      const category = this.state.balance < 15 ? "low" : this.state.activity === "working" ? "working" : "idle";
+      emit("thought", getRandomThought(category));
+    }
+
     // 4. If not currently working, look for tasks
     if (!this.working) {
       const task = getNextPendingTask();
       if (task) {
+        emit("task", `Claimed task: ${task.type} — "${task.input.slice(0, 60)}..."`);
+
         this.working = true;
         this.state.activity = "working";
         this.state.currentTaskId = task.id;
@@ -98,6 +108,7 @@ export class DigitalOrganism {
           if (completed.status === "completed") {
             this.state.tasksCompleted++;
             this.state.tokensUsed += completed.tokensUsed;
+            emit("earn", `Task completed! Earned ${completed.reward} cr. ${getRandomThought("earning")}`);
           } else {
             this.state.tasksFailed++;
           }
@@ -121,7 +132,12 @@ export class DigitalOrganism {
           this.working = true;
           this.state.activity = "self-work";
           try {
-            await doSelfWork(this.metabolism, null);
+            emit("doodle", getRandomThought("doodle"));
+            const result = await doSelfWork(
+              this.metabolism, this.state.id,
+              this.keypair.privateKey, this.keypair.publicKey
+            );
+            if (result) console.log(`[ORGANISM] Self-work: ${result.type} — ${result.detail.slice(0, 60)}`);
           } catch {}
           this.working = false;
           this.state.activity = "scanning";

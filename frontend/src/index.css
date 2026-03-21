@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+* { box-sizing: border-box; }
+html { background: #050508; }
+body { margin: 0; background: #050508; color: #d0d8e8; -webkit-font-smoothing: antialiased; }
+
+.orb {
+  width: 100px; height: 100px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #40ffb0, #0cbb76, #064a30);
+  box-shadow: 0 0 50px rgba(12,187,118,0.25), 0 0 100px rgba(12,187,118,0.08);
+  animation: heartbeat 1.5s ease-in-out infinite; transition: all 1s;
+}
+.orb.working { animation-duration: 0.7s; box-shadow: 0 0 70px rgba(12,187,118,0.4); }
+.orb.warn { background: radial-gradient(circle at 35% 35%, #ffe066, #ffbf00, #8a6500); box-shadow: 0 0 50px rgba(255,191,0,0.25); }
+.orb.crit { background: radial-gradient(circle at 35% 35%, #ff8888, #ff4d61, #8a1020); box-shadow: 0 0 50px rgba(255,77,97,0.25); animation-duration: 0.4s; }
+.orb.dead { background: radial-gradient(circle at 35% 35%, #333, #1a1a1a); box-shadow: none; animation: none; }
+
+@keyframes heartbeat { 0%,100% { transform: scale(1) } 50% { transform: scale(1.07) } }
+@keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.25 } }
+@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+::-webkit-scrollbar-track { background: transparent; }
