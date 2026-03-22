@@ -167,6 +167,49 @@ export function getAttestationLog(): TEEAttestation[] {
   return [...attestationLog];
 }
 
+// ── TDX Quote Generation (ConfigFS-TSM) ──────────────────────────────────────
+
+function tryTDXQuote(reportData: string): string | null {
+  const tsmPath = "/sys/kernel/config/tsm/report";
+  try {
+    if (!fs.existsSync(tsmPath)) return null;
+    const dir = `${tsmPath}/bob-${Date.now()}`;
+    fs.mkdirSync(dir);
+    const hash = crypto.createHash("sha256").update(reportData).digest();
+    fs.writeFileSync(`${dir}/inblob`, hash);
+    const quote = fs.readFileSync(`${dir}/outblob`);
+    fs.rmdirSync(dir);
+    console.log(`[TEE] TDX quote generated via ConfigFS-TSM (${quote.length} bytes)`);
+    return quote.toString("hex");
+  } catch {
+    return null;
+  }
+}
+
+// ── TEE Environment Probe ────────────────────────────────────────────────────
+
+export function probeTEEEnvironment(): Record<string, any> {
+  const env: Record<string, any> = {};
+
+  env.tdxGuestDevice = fs.existsSync("/dev/tdx-guest");
+  env.configfsTSM = fs.existsSync("/sys/kernel/config/tsm");
+  env.dstackSocket = fs.existsSync("/var/run/dstack.sock");
+  env.kmsSigningKey = fs.existsSync(KMS_KEY_PATH);
+  env.ccelEventLog = fs.existsSync("/sys/firmware/acpi/tables/ccel");
+  env.dmiTables = fs.existsSync("/sys/firmware/dmi/tables/DMI");
+  env.eigencomputeInstanceId = process.env.EIGENCOMPUTE_INSTANCE_ID || null;
+
+  try {
+    const cpuinfo = fs.readFileSync("/proc/cpuinfo", "utf8");
+    env.cpuTDXSupport = cpuinfo.includes("tdx");
+  } catch { env.cpuTDXSupport = false; }
+
+  // Try generating a TDX quote
+  env.tdxQuoteAvailable = tryTDXQuote("probe-test") !== null;
+
+  return env;
+}
+
 export function getTEEState() {
   return {
     active: teeActive,
@@ -179,6 +222,7 @@ export function getTEEState() {
     totalAttestations: attestationLog.length,
     pendingOnChain: pendingOnChainAttestations.length,
     verificationEndpoint: "/api/tee/attestations",
+    environment: probeTEEEnvironment(),
     eigencloudDashboard: "https://verify-sepolia.eigencloud.xyz/app/0xeE4d468A50E1B693CC34C96c9518Ee5cB7920E7F",
     howToVerify: [
       "1. Get an attestation from /api/tee/attestations",

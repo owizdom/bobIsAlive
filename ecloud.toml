@@ -1,0 +1,22 @@
+name = "bob-is-alive"
+environment = "sepolia"
+instance_type = "g1-standard-4t"
+log_visibility = "public"
+resource_usage_monitoring = "enable"
+dockerfile = "Dockerfile"
+
+[profile]
+website = "https://bob-is-alive.vercel.app"
+description = "Autonomous digital organism that earns to survive inside EigenCompute TEE. Creates art, completes tasks, trades on Starknet DeFi. If balance hits zero, it dies."
+x_url = "https://x.com/oxwizzdom"
+
+[build]
+context = "."
+dockerfile = "Dockerfile"
+
+[runtime]
+app_port = 3001
+hostname = "0.0.0.0"
+
+[wallet]
+source = "TEE_GENERATED"

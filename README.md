@@ -195,12 +195,51 @@ docker run -p 3001:3001 --env-file .env bob-is-alive
 
 ### EigenCompute Deployment
 
+Bob is deployed on EigenCompute with Intel TDX TEE (g1-standard-4t instance). The deployment config is in `ecloud.toml`.
+
 ```bash
+# Install ecloud CLI
+curl -fsSL https://raw.githubusercontent.com/Layr-Labs/eigencloud-tools/master/install-all.sh | bash
+
+# Authenticate
+ecloud auth login
+
+# Subscribe to billing
+ecloud billing subscribe
+
+# Build Docker image (must be linux/amd64 for Intel TDX)
+docker buildx build --platform linux/amd64 --no-cache -t yourdockerhub/bob-is-alive:latest --push .
+
 # Deploy to EigenCompute TEE
-ecloud compute app deploy --image-ref bob-is-alive:latest
+ecloud compute app deploy \
+  --image-ref yourdockerhub/bob-is-alive:latest \
+  --name bob-is-alive \
+  --env-file .env \
+  --instance-type g1-standard-4t \
+  --log-visibility public \
+  --resource-usage-monitoring enable
+
+# Or deploy from verifiable source (recommended)
+ecloud compute app deploy \
+  --verifiable \
+  --repo https://github.com/owizdom/bobIsAlive \
+  --commit $(git rev-parse HEAD) \
+  --env-file .env \
+  --instance-type g1-standard-4t \
+  --log-visibility public
 ```
 
-Once deployed on EigenCompute, Bob runs inside an Intel TDX enclave. The TEE generates Bob's wallet keys, enforces the metabolism, and attests all work with Ed25519 signatures.
+**Live deployment:** [Verify on EigenCompute](https://verify-sepolia.eigencloud.xyz/app/0xeE4d468A50E1B693CC34C96c9518Ee5cB7920E7F)
+
+Once deployed, Bob runs inside an Intel TDX enclave. The TEE generates Bob's signing keys in memory (never on disk), enforces the metabolism, attests all outputs, and probes for TDX attestation quotes via ConfigFS-TSM.
+
+## On-Chain Identity (ERC-8004)
+
+Bob is registered on-chain via ERC-8004 (Agent Identity Standard) on Base Mainnet.
+
+- Registration TX: [View on BaseScan](https://basescan.org/tx/0xdcfbfb6e2d7f210138fbc456360e484b9fc6bd7e716412ce49f5cda6f2dd3fe5)
+- Starknet Wallet: `0x4d8df94a00d8f267ceed9eacbde905928b0afcd84be1175429afde92c37e6c6`
+- EigenCompute App ID: `0xeE4d468A50E1B693CC34C96c9518Ee5cB7920E7F`
 
 ## API
 
@@ -217,6 +256,10 @@ Once deployed on EigenCompute, Bob runs inside an Intel TDX enclave. The TEE gen
 | `POST /api/nft/buy` | Purchase a doodle NFT (STRK) |
 | `GET /api/chain` | On-chain activity (heartbeats, swaps, staking) |
 | `GET /api/proof` | TEE attestation + completed task proofs |
+| `GET /api/tee` | TEE state: signing key, KMS key, attestation method |
+| `GET /api/tee/attestations` | All TEE-signed attestation records |
+| `GET /api/tee/environment` | Hardware TEE probe: TDX device, ConfigFS-TSM, CCEL |
+| `GET /api/chain` | On-chain activity: heartbeats, swaps, staking |
 | `GET /api/earnings` | Economic activity log |
 | `GET /health` | System health |
 

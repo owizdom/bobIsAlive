@@ -37,7 +37,7 @@ import { initNFT, isNFTEnabled, getWalletAddress, getWalletBalance, getListings,
 import { TASK_REWARDS } from "./organism-types";
 import { getNewsCache } from "./content-pipeline";
 import { initChain, getChainState } from "./chain";
-import { initTEE, getTEEState, getAttestationLog, attestEvent } from "./tee";
+import { initTEE, getTEEState, getAttestationLog, attestEvent, probeTEEEnvironment } from "./tee";
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -324,6 +324,11 @@ app.get("/api/tee", (_req, res) => {
 // TEE attestation log (all signed events)
 app.get("/api/tee/attestations", (_req, res) => {
   res.json(getAttestationLog());
+});
+
+// TEE environment probe (hardware evidence)
+app.get("/api/tee/environment", (_req, res) => {
+  res.json(probeTEEEnvironment());
 });
 
 // ── NFT Marketplace ───────────────────────────────────────────────────────────
