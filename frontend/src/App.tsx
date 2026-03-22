@@ -17,15 +17,18 @@ export default function App() {
   const alive = hb?.alive ?? true
   const balance = hb?.balance ?? 100
   const [strkBalance, setStrkBalance] = useState('0')
-  const [strkPrice, setStrkPrice] = useState(0.03)
+  const [ethBalance, setEthBalance] = useState('0')
+  const [strkPrice, setStrkPrice] = useState(0.036)
+  const [ethPrice, setEthPrice] = useState(2080)
   const [showIdentity, setShowIdentity] = useState(false)
   useEffect(() => {
-    const poll = () => fetch(`${API}/api/nft/listings`).then(r => r.json()).then(d => {
-      setStrkBalance(d.walletBalance || '0')
-    }).catch(() => {})
-    // Fetch STRK price
-    fetch('https://api.coingecko.com/api/v3/simple/price?ids=starknet&vs_currencies=usd')
-      .then(r => r.json()).then(d => setStrkPrice(d.starknet?.usd || 0.03)).catch(() => {})
+    const poll = () => {
+      fetch(`${API}/api/nft/listings`).then(r => r.json()).then(d => setStrkBalance(d.walletBalance || '0')).catch(() => {})
+      fetch(`${API}/api/chain`).then(r => r.json()).then(d => setEthBalance(d.ethBalance || '0')).catch(() => {})
+    }
+    // Fetch prices
+    fetch('https://api.coingecko.com/api/v3/simple/price?ids=starknet,ethereum&vs_currencies=usd')
+      .then(r => r.json()).then(d => { setStrkPrice(d.starknet?.usd || 0.036); setEthPrice(d.ethereum?.usd || 2080); }).catch(() => {})
     poll(); const i = setInterval(poll, 15000); return () => clearInterval(i)
   }, [])
 
@@ -104,8 +107,8 @@ export default function App() {
               {alive ? (hb?.activity === 'reading' ? 'Reading' : hb?.activity === 'contemplating' ? 'Thinking' : hb?.activity === 'self-work' ? 'Creating' : hb?.activity === 'working' ? 'Working' : hb?.mood === 'critical' ? 'CRITICAL' : hb?.mood === 'anxious' ? 'Anxious' : hb?.mood === 'cautious' ? 'Focused' : 'Online') : 'Deceased'}
             </span>
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-green/20 bg-green-bg">
-              <span className="text-[14px] font-mono font-bold text-green">${(parseFloat(strkBalance) * strkPrice).toFixed(2)}</span>
-              <span className="text-[10px] text-green/70">{parseFloat(strkBalance).toFixed(1)} STRK</span>
+              <span className="text-[14px] font-mono font-bold text-green">${(parseFloat(strkBalance) * strkPrice + parseFloat(ethBalance) * ethPrice).toFixed(2)}</span>
+              <span className="text-[10px] text-green/70">earned</span>
             </div>
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-bg-alt">
               <span className="text-[12px] font-mono font-semibold text-text">{balance.toFixed(1)}</span>
