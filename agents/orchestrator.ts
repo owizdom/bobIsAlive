@@ -14,24 +14,14 @@ import dotenv from "dotenv";
 import fs from "fs";
 dotenv.config();
 
-// Auto-detect EigenCompute TEE environment — search multiple paths
-const KMS_KEY_CANDIDATES = [
-  process.env.KMS_SIGNING_KEY_FILE,
-  process.env.KMS_SIGNING_PUBLIC_KEY_FILE,
-  "/usr/local/bin/kms-signing-public-key.pem",
-  "/eigen/bin/kms-signing-public-key.pem",
-  "/eigen/kms-signing-public-key.pem",
-  "/run/kms-signing-public-key.pem",
-  "/tmp/kms-signing-public-key.pem",
-].filter(Boolean) as string[];
-
+// Auto-detect EigenCompute TEE environment
 if (!process.env.EIGENCOMPUTE_INSTANCE_ID) {
-  for (const candidate of KMS_KEY_CANDIDATES) {
-    if (fs.existsSync(candidate)) {
-      process.env.EIGENCOMPUTE_INSTANCE_ID = "eigencompute-tee";
-      console.log(`[BOOT] KMS key found at: ${candidate}`);
-      break;
-    }
+  if (process.env.KMS_PUBLIC_KEY) {
+    process.env.EIGENCOMPUTE_INSTANCE_ID = "eigencompute-tee";
+    console.log(`[BOOT] KMS key detected via KMS_PUBLIC_KEY env var`);
+  } else if (fs.existsSync("/usr/local/bin/kms-signing-public-key.pem")) {
+    process.env.EIGENCOMPUTE_INSTANCE_ID = "eigencompute-tee";
+    console.log(`[BOOT] KMS key found at /usr/local/bin/kms-signing-public-key.pem`);
   }
 }
 

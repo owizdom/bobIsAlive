@@ -29,10 +29,11 @@ const KMS_KEY_CANDIDATES = [
   "/tmp/kms-signing-public-key.pem",                    // temp mount
 ].filter(Boolean) as string[];
 
-// dstack HTTP API (Phala TEEaaS used by EigenCloud)
+// dstack / KMS HTTP API candidates for TDX quote
 const DSTACK_API_CANDIDATES = [
   process.env.DSTACK_ENDPOINT,
   process.env.DSTACK_URL,
+  process.env.KMS_SERVER_URL,       // EigenCloud KMS server (e.g. http://10.128.15.203:8080)
   "http://localhost:8090",
   "http://127.0.0.1:8090",
   "http://localhost:8091",
@@ -116,38 +117,46 @@ export function initTEE(): { active: boolean; kmsPublicKey: string | null } {
   console.log(`[TEE] Signing key generated in memory: ${teeSigningPublicKey.slice(0, 24)}...`);
   console.log(`[TEE] This key exists only in RAM. Lost when enclave stops.`);
 
-  // Step 2: Search for KMS public key across all candidate paths
-  console.log(`[TEE] Searching ${KMS_KEY_CANDIDATES.length} candidate paths for KMS key...`);
-  for (const candidate of KMS_KEY_CANDIDATES) {
-    try {
-      if (fs.existsSync(candidate)) {
-        kmsPublicKey = fs.readFileSync(candidate, "utf8").trim();
-        if (kmsPublicKey && kmsPublicKey.length > 10) {
-          resolvedKmsKeyPath = candidate;
-          teeActive = true;
-          console.log(`[TEE] KMS key FOUND at: ${candidate}`);
-          break;
+  // Step 2: Check KMS_PUBLIC_KEY env var first (EigenCloud injects key as env var, not file)
+  if (process.env.KMS_PUBLIC_KEY) {
+    kmsPublicKey = process.env.KMS_PUBLIC_KEY.trim();
+    resolvedKmsKeyPath = "env:KMS_PUBLIC_KEY";
+    teeActive = true;
+    console.log(`[TEE] KMS key loaded from KMS_PUBLIC_KEY env var (${kmsPublicKey.length} chars)`);
+  }
+
+  // Step 2b: Fall back to file-based search
+  if (!teeActive) {
+    console.log(`[TEE] No KMS_PUBLIC_KEY env var, searching ${KMS_KEY_CANDIDATES.length} file paths...`);
+    for (const candidate of KMS_KEY_CANDIDATES) {
+      try {
+        if (fs.existsSync(candidate)) {
+          const content = fs.readFileSync(candidate, "utf8").trim();
+          if (content && content.length > 10 && (content.includes("KEY") || content.includes("-----BEGIN"))) {
+            kmsPublicKey = content;
+            resolvedKmsKeyPath = candidate;
+            teeActive = true;
+            console.log(`[TEE] KMS key FOUND at: ${candidate}`);
+            break;
+          }
+          console.log(`[TEE] File exists but not a valid key: ${candidate}`);
         }
-        console.log(`[TEE] File exists but empty/invalid: ${candidate}`);
-      } else {
-        console.log(`[TEE] Not found: ${candidate}`);
+      } catch (err: any) {
+        console.log(`[TEE] Error reading ${candidate}: ${err?.message?.slice(0, 60)}`);
       }
-    } catch (err: any) {
-      console.log(`[TEE] Error reading ${candidate}: ${err?.message?.slice(0, 60)}`);
     }
   }
 
-  // Step 2b: If no file found, scan common directories for any .pem files
+  // Step 2c: Scan directories for .pem files only (skip binaries)
   if (!teeActive) {
     const scanDirs = ["/eigen", "/eigen/bin", "/usr/local/bin", "/run", "/tmp", "/etc/eigencompute"];
     for (const dir of scanDirs) {
       try {
         if (fs.existsSync(dir) && fs.statSync(dir).isDirectory()) {
           const files = fs.readdirSync(dir);
-          const pemFiles = files.filter(f => f.endsWith(".pem") || f.includes("kms") || f.includes("signing"));
+          const pemFiles = files.filter(f => f.endsWith(".pem"));
           if (pemFiles.length > 0) {
-            console.log(`[TEE] Found relevant files in ${dir}: ${pemFiles.join(", ")}`);
-            // Try reading the first matching PEM file
+            console.log(`[TEE] Found .pem files in ${dir}: ${pemFiles.join(", ")}`);
             for (const pf of pemFiles) {
               const fullPath = path.join(dir, pf);
               try {
@@ -162,27 +171,17 @@ export function initTEE(): { active: boolean; kmsPublicKey: string | null } {
               } catch {}
             }
             if (teeActive) break;
-          } else {
-            console.log(`[TEE] No PEM/KMS files in ${dir} (${files.length} files: ${files.slice(0, 5).join(", ")}${files.length > 5 ? "..." : ""})`);
           }
         }
       } catch {}
     }
   }
 
-  // Step 2c: If still no key, check if EIGENCOMPUTE_INSTANCE_ID is set (platform injected)
-  // and try dstack HTTP API to derive a key
+  // Step 2d: Last resort — if EIGENCOMPUTE_INSTANCE_ID is set, we're in a TEE
   if (!teeActive && process.env.EIGENCOMPUTE_INSTANCE_ID) {
-    console.log(`[TEE] No KMS file found but EIGENCOMPUTE_INSTANCE_ID=${process.env.EIGENCOMPUTE_INSTANCE_ID}`);
-    console.log(`[TEE] Will try dstack HTTP API for attestation...`);
-    // Mark as active based on platform env — we're definitely in a TEE
+    console.log(`[TEE] No KMS key found but EIGENCOMPUTE_INSTANCE_ID=${process.env.EIGENCOMPUTE_INSTANCE_ID}`);
     teeActive = true;
     kmsPublicKey = `eigencompute-instance:${process.env.EIGENCOMPUTE_INSTANCE_ID}`;
-    enclaveIdentity = crypto.createHash("sha256")
-      .update(process.env.EIGENCOMPUTE_INSTANCE_ID)
-      .update(teeSigningPublicKey)
-      .digest("hex");
-    kmsKeyHash = crypto.createHash("sha256").update(kmsPublicKey).digest("hex");
     console.log(`[TEE] TEE activated via platform env var (fallback mode)`);
   }
 
