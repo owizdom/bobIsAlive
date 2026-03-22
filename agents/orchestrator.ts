@@ -14,10 +14,25 @@ import dotenv from "dotenv";
 import fs from "fs";
 dotenv.config();
 
-// Auto-detect EigenCompute TEE environment
-const KMS_KEY_PATH = "/usr/local/bin/kms-signing-public-key.pem";
-if (!process.env.EIGENCOMPUTE_INSTANCE_ID && fs.existsSync(KMS_KEY_PATH)) {
-  process.env.EIGENCOMPUTE_INSTANCE_ID = "eigencompute-tee";
+// Auto-detect EigenCompute TEE environment — search multiple paths
+const KMS_KEY_CANDIDATES = [
+  process.env.KMS_SIGNING_KEY_FILE,
+  process.env.KMS_SIGNING_PUBLIC_KEY_FILE,
+  "/usr/local/bin/kms-signing-public-key.pem",
+  "/eigen/bin/kms-signing-public-key.pem",
+  "/eigen/kms-signing-public-key.pem",
+  "/run/kms-signing-public-key.pem",
+  "/tmp/kms-signing-public-key.pem",
+].filter(Boolean) as string[];
+
+if (!process.env.EIGENCOMPUTE_INSTANCE_ID) {
+  for (const candidate of KMS_KEY_CANDIDATES) {
+    if (fs.existsSync(candidate)) {
+      process.env.EIGENCOMPUTE_INSTANCE_ID = "eigencompute-tee";
+      console.log(`[BOOT] KMS key found at: ${candidate}`);
+      break;
+    }
+  }
 }
 
 import express from "express";
@@ -37,7 +52,7 @@ import { initNFT, isNFTEnabled, getWalletAddress, getWalletBalance, getEthWallet
 import { TASK_REWARDS } from "./organism-types";
 import { getNewsCache } from "./content-pipeline";
 import { initChain, getChainState } from "./chain";
-import { initTEE, getTEEState, getAttestationLog, attestEvent, probeTEEEnvironment, getTDXQuote, getTDXQuoteTimestamp, getTeeSigningPublicKey, getKmsKeyHash, verifyAttestationSignature } from "./tee";
+import { initTEE, getTEEState, getAttestationLog, attestEvent, probeTEEEnvironment, getTDXQuote, getTDXQuoteTimestamp, getTeeSigningPublicKey, getKmsKeyHash, verifyAttestationSignature, getTEEDebugInfo } from "./tee";
 import crypto from "crypto";
 
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -360,6 +375,11 @@ app.get("/api/tee/remote-attestation", (_req, res) => {
     },
     sampleAttestation: getAttestationLog().slice(-1)[0] || null,
   });
+});
+
+// TEE debug (shows all paths searched, env vars, directory listings)
+app.get("/api/tee/debug", (_req, res) => {
+  res.json(getTEEDebugInfo());
 });
 
 // Verify a specific attestation signature
