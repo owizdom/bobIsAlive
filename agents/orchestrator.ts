@@ -31,13 +31,14 @@ import { getMood } from "./monologue";
 import { initResearch, isSearchEnabled } from "./research";
 import { buildAttestation } from "./keystore";
 import type { LLMConfig, TaskType } from "./organism-types";
-import { getDoodleLog, getImprovementLog } from "./self-work";
+import { getDoodleLog, getImprovementLog, getTotalDoodlesCreated } from "./self-work";
 import { getRecentEntries } from "./monologue";
 import { initNFT, isNFTEnabled, getWalletAddress, getWalletBalance, getListings, getAvailableListings, buyDoodle } from "./nft";
 import { TASK_REWARDS } from "./organism-types";
 import { getNewsCache } from "./content-pipeline";
 import { initChain, getChainState } from "./chain";
-import { initTEE, getTEEState, getAttestationLog, attestEvent, probeTEEEnvironment } from "./tee";
+import { initTEE, getTEEState, getAttestationLog, attestEvent, probeTEEEnvironment, getTDXQuote, getTDXQuoteTimestamp, getTeeSigningPublicKey, getKmsKeyHash, verifyAttestationSignature } from "./tee";
+import crypto from "crypto";
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -298,7 +299,7 @@ app.get("/api/monologue", (_req, res) => {
 
 // Doodle art log
 app.get("/api/doodles", (_req, res) => {
-  res.json(getDoodleLog());
+  res.json({ doodles: getDoodleLog(), totalCreated: getTotalDoodlesCreated() });
 });
 
 // Self-improvement log
@@ -329,6 +330,37 @@ app.get("/api/tee/attestations", (_req, res) => {
 // TEE environment probe (hardware evidence)
 app.get("/api/tee/environment", (_req, res) => {
   res.json(probeTEEEnvironment());
+});
+
+// Remote attestation bundle (everything a verifier needs)
+app.get("/api/tee/remote-attestation", (_req, res) => {
+  const pubkey = getTeeSigningPublicKey();
+  res.json({
+    version: "1.0",
+    enclave: getTEEState().mode,
+    tdxQuote: getTDXQuote(),
+    tdxQuoteTimestamp: getTDXQuoteTimestamp(),
+    signingPublicKey: pubkey,
+    signingPublicKeyHash: crypto.createHash("sha256").update(Buffer.from(pubkey, "hex")).digest("hex"),
+    kmsKeyHash: getKmsKeyHash(),
+    eigencloudDashboard: "https://verify-sepolia.eigencloud.xyz/app/0xeE4d468A50E1B693CC34C96c9518Ee5cB7920E7F",
+    verificationChain: {
+      step1: "Validate TDX quote with Intel DCAP verification library",
+      step2: "Extract REPORTDATA from TDX quote (first 64 bytes of report)",
+      step3: "Verify REPORTDATA == SHA256(signingPublicKey), left-padded to 64 bytes",
+      step4: "For any attestation: crypto.verify(null, payload, signingPublicKey, signature)",
+      step5: "This proves the event was signed inside a genuine Intel TDX enclave",
+    },
+    sampleAttestation: getAttestationLog().slice(-1)[0] || null,
+  });
+});
+
+// Verify a specific attestation signature
+app.post("/api/tee/verify", (req, res) => {
+  const { payload, signature } = req.body as { payload?: string; signature?: string };
+  if (!payload || !signature) return res.status(400).json({ error: "payload and signature required" });
+  const valid = verifyAttestationSignature(payload, signature);
+  res.json({ valid, signerPublicKey: getTeeSigningPublicKey(), teeActive: getTEEState().active });
 });
 
 // ── NFT Marketplace ───────────────────────────────────────────────────────────

@@ -307,9 +307,14 @@ let doodleLog: Array<{
 }> = [];
 
 let selfWorkCount = 0;
+let totalDoodlesCreated = 0;
 
 export function getDoodleLog() {
   return doodleLog;
+}
+
+export function getTotalDoodlesCreated() {
+  return totalDoodlesCreated;
 }
 
 export function getImprovementLog() {
@@ -395,6 +400,7 @@ async function doDoodle(
   }
 
   const entry = { title, description, filename, timestamp: Date.now(), attestation, pushedToGithub: false, nftListed };
+  totalDoodlesCreated++;
   doodleLog.push(entry);
   if (doodleLog.length > 100) doodleLog.shift();
 

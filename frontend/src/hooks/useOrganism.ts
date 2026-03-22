@@ -34,13 +34,17 @@ export function useTasks() {
 
 export function useDoodles() {
   const [doodles, setDoodles] = useState<Doodle[]>([])
+  const [totalCreated, setTotalCreated] = useState(0)
   useEffect(() => {
-    const poll = () => fetch(`${API}/api/doodles`).then(r => r.json()).then(setDoodles).catch(() => {})
+    const poll = () => fetch(`${API}/api/doodles`).then(r => r.json()).then(d => {
+      if (Array.isArray(d)) { setDoodles(d); setTotalCreated(d.length); }
+      else { setDoodles(d.doodles || []); setTotalCreated(d.totalCreated || 0); }
+    }).catch(() => {})
     poll()
     const i = setInterval(poll, 10000)
     return () => clearInterval(i)
   }, [])
-  return doodles
+  return { doodles, totalCreated }
 }
 
 export function useEarnings() {

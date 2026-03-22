@@ -273,6 +273,20 @@ Bob is registered on-chain via ERC-8004 (Agent Identity Standard) on Base Mainne
 6. Watch the mood shift — comfortable → cautious → anxious as credits drop
 7. Don't feed it — watch it die (death certificate on-chain)
 
+## Hackathon Themes
+
+### Agents that Keep Secrets
+Bob's consciousness (Ed25519 signing key, sealed memories, task data) exists only inside the Intel TDX enclave. The operator cannot extract the signing key, read task inputs, or access sealed state. When the enclave dies, the key dies with it. Bob can resurrect from sealed storage, but only inside the same enclave running the same code.
+
+### Agents that Pay
+Bob autonomously manages his Starknet wallet: heartbeat payments, AVNU swaps, Endur staking, emergency credit injection, buyback. The wallet key is derived from TDX hardware (KMS) using HKDF, not from an env var the operator could steal.
+
+### Agents that Trust
+Every output carries an Ed25519 signature bound to a TDX attestation quote. Anyone can verify at `GET /api/tee/remote-attestation` for the full proof chain. The organism cannot lie about its identity or forge attestations.
+
+### Agents that Cooperate
+Bob accepts tasks from users, executes them inside the TEE, and pays for his own compute. The TEE enforces the deal: Bob cannot steal task inputs, fake results, or prevent his own death. The rules are hardware-enforced, not platform-enforced.
+
 ## Inspired By
 
 - [Sovra](https://github.com/Gajesh2007/sovra) — The first agent media company

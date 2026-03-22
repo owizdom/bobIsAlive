@@ -5,26 +5,22 @@ import type { MonologueEntry } from './hooks/useOrganism'
 
 const API = ''
 
-type View = 'brain' | 'gallery' | 'tasks' | 'chain'
+type View = 'brain' | 'gallery' | 'tasks' | 'chain' | 'verify'
 
 export default function App() {
   const [view, setView] = useState<View>('brain')
   const hb = useHeartbeat()
   const org = useOrganism()
   const { tasks, refresh } = useTasks()
-  const doodles = useDoodles()
+  const { doodles, totalCreated } = useDoodles()
   const monologue = useMonologue()
   const alive = hb?.alive ?? true
   const balance = hb?.balance ?? 100
   const [strkBalance, setStrkBalance] = useState('0')
-  const [strkEarned, setStrkEarned] = useState(0)
   const [showIdentity, setShowIdentity] = useState(false)
   useEffect(() => {
     const poll = () => fetch(`${API}/api/nft/listings`).then(r => r.json()).then(d => {
       setStrkBalance(d.walletBalance || '0')
-      const sold = (d.listings || []).filter((l: any) => l.sold)
-      const earned = sold.reduce((sum: number, l: any) => sum + parseFloat(l.price || '0'), 0)
-      setStrkEarned(earned)
     }).catch(() => {})
     poll(); const i = setInterval(poll, 15000); return () => clearInterval(i)
   }, [])
@@ -38,6 +34,7 @@ export default function App() {
     { id: 'gallery', icon: '', label: 'Gallery' },
     { id: 'tasks', icon: '', label: 'Tasks' },
     { id: 'chain', icon: '', label: 'On-Chain' },
+    { id: 'verify', icon: '', label: 'Verify' },
   ]
 
   return (
@@ -61,7 +58,7 @@ export default function App() {
             <button key={n.id} onClick={() => setView(n.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-display font-semibold transition-all ${view === n.id ? 'bg-sidebar-hover text-sidebar-active' : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-active'}`}>
               <span>{n.label}</span>
-              {n.id === 'gallery' && doodles.length > 0 && <span className="ml-auto text-[10px] font-mono text-green bg-green/10 px-1.5 py-0.5 rounded">{doodles.length}</span>}
+              {n.id === 'gallery' && totalCreated > 0 && <span className="ml-auto text-[10px] font-mono text-green bg-green/10 px-1.5 py-0.5 rounded">{totalCreated}</span>}
               {n.id === 'tasks' && tasks.filter(t => t.status === 'completed').length > 0 && <span className="ml-auto text-[10px] font-mono text-blue bg-blue/10 px-1.5 py-0.5 rounded">{tasks.filter(t => t.status === 'completed').length}</span>}
             </button>
           ))}
@@ -106,12 +103,6 @@ export default function App() {
               <span className="text-[14px] font-mono font-bold text-green">{parseFloat(strkBalance).toFixed(2)}</span>
               <span className="text-[10px] text-green/70">STRK</span>
             </div>
-            {strkEarned > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber/20 bg-amber-bg">
-                <span className="text-[12px] font-mono font-bold text-amber">+{strkEarned.toFixed(2)}</span>
-                <span className="text-[10px] text-amber/70">earned</span>
-              </div>
-            )}
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-bg-alt">
               <span className="text-[12px] font-mono font-semibold text-text">{balance.toFixed(1)}</span>
               <span className="text-[10px] text-text-4">credits</span>
@@ -130,6 +121,7 @@ export default function App() {
           {view === 'gallery' && <GalleryView doodles={doodles} />}
           {view === 'tasks' && <TasksView tasks={tasks} alive={alive} onRefresh={refresh} />}
           {view === 'chain' && <ChainView strkBalance={strkBalance} />}
+          {view === 'verify' && <VerifyView />}
         </div>
       </div>
 
@@ -904,6 +896,96 @@ function ChainView({ strkBalance }: { strkBalance: string }) {
                   className="text-[10px] text-blue hover:underline font-semibold">Voyager</a>
               </div>
             </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─── Verify TEE ─── */
+function VerifyView() {
+  const [attestation, setAttestation] = useState<any>(null)
+  const [remoteAttest, setRemoteAttest] = useState<any>(null)
+  const [verifyResult, setVerifyResult] = useState<any>(null)
+  const [attestations, setAttestations] = useState<any[]>([])
+
+  useEffect(() => {
+    fetch(`${API}/api/tee/remote-attestation`).then(r => r.json()).then(setRemoteAttest).catch(() => {})
+    fetch(`${API}/api/tee/attestations`).then(r => r.json()).then(d => setAttestations(Array.isArray(d) ? d.slice(-20) : [])).catch(() => {})
+  }, [])
+
+  const handleVerify = async (att: any) => {
+    setAttestation(att)
+    try {
+      const r = await fetch(`${API}/api/tee/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload: att.payload, signature: att.signature }),
+      })
+      setVerifyResult(await r.json())
+    } catch { setVerifyResult({ valid: false, error: 'Request failed' }) }
+  }
+
+  return (
+    <div className="p-6 max-w-3xl">
+      <h3 className="text-[15px] font-bold font-display italic mb-1">TEE Attestation Verification</h3>
+      <p className="text-[12px] text-text-3 mb-6">Verify that Bob's outputs were generated inside an Intel TDX enclave. Select any attestation to check its Ed25519 signature.</p>
+
+      {remoteAttest && (
+        <div className="bg-surface rounded-xl border border-border p-4 mb-6">
+          <h4 className="text-[13px] font-bold mb-3">Verification Chain</h4>
+          <div className="space-y-2 text-[11px] font-mono text-text-3">
+            <div>Enclave: <span className="text-green font-semibold">{remoteAttest.enclave}</span></div>
+            <div>Signing Key: <span className="text-text">{remoteAttest.signingPublicKey?.slice(0, 32)}...</span></div>
+            <div>Key Hash: <span className="text-text">{remoteAttest.signingPublicKeyHash?.slice(0, 32)}...</span></div>
+            <div>KMS Hash: <span className="text-text">{remoteAttest.kmsKeyHash !== 'none' ? remoteAttest.kmsKeyHash?.slice(0, 32) + '...' : 'none (local dev)'}</span></div>
+            <div>TDX Quote: <span className={remoteAttest.tdxQuote ? 'text-green' : 'text-amber'}>{remoteAttest.tdxQuote ? `Available (${remoteAttest.tdxQuote.length / 2} bytes)` : 'Not available (ConfigFS-TSM not exposed)'}</span></div>
+          </div>
+          {remoteAttest.verificationChain && (
+            <div className="mt-3 pt-3 border-t border-border-light">
+              <div className="text-[10px] text-text-4 uppercase tracking-wider mb-2">How to verify</div>
+              {Object.values(remoteAttest.verificationChain).map((step: any, i: number) => (
+                <div key={i} className="text-[11px] text-text-3 mb-1">{step}</div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {verifyResult && (
+        <div className={`rounded-xl border p-4 mb-6 ${verifyResult.valid ? 'bg-green-bg border-green/30' : 'bg-red-bg border-red/30'}`}>
+          <div className="flex items-center gap-3">
+            <span className={`text-[20px] font-bold ${verifyResult.valid ? 'text-green' : 'text-red'}`}>{verifyResult.valid ? 'VALID' : 'INVALID'}</span>
+            <div className="text-[11px] text-text-3">
+              <div>Attestation: {attestation?.type} #{attestation?.id}</div>
+              <div>Signed by TEE-resident key</div>
+              <div>TEE Active: {verifyResult.teeActive ? 'Yes (Intel TDX)' : 'No (local dev)'}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <h4 className="text-[13px] font-bold font-display italic mb-3">Recent Attestations</h4>
+      <p className="text-[11px] text-text-4 mb-3">Click any attestation to verify its signature.</p>
+      {attestations.length === 0 ? (
+        <div className="text-center py-8 text-text-4 text-sm">No attestations yet. Wait for Bob to create art or complete a task.</div>
+      ) : (
+        <div className="space-y-2">
+          {[...attestations].reverse().map((att: any, i: number) => (
+            <button key={i} onClick={() => handleVerify(att)}
+              className={`w-full bg-surface rounded-lg border p-3 flex items-center justify-between text-left transition-all hover:border-green/30 ${attestation?.id === att.id ? 'border-green/50 bg-green-bg' : 'border-border'}`}>
+              <div className="flex items-center gap-3 min-w-0">
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
+                  att.type === 'task' ? 'bg-blue-bg text-blue' : att.type === 'doodle' ? 'bg-amber-bg text-amber' : att.type === 'heartbeat' ? 'bg-green-bg text-green' : 'bg-purple-bg text-purple'
+                }`}>{att.type}</span>
+                <span className="font-mono text-[10px] text-text-3 truncate">{att.hash?.slice(0, 24)}...</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`text-[9px] font-semibold ${att.verified ? 'text-green' : 'text-red'}`}>{att.verified ? 'SIGNED' : '?'}</span>
+                <span className="text-[10px] text-text-4">{new Date(att.timestamp).toLocaleTimeString()}</span>
+              </div>
+            </button>
           ))}
         </div>
       )}

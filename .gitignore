@@ -1,10 +1,10 @@
-node_modules/
-dist/
-.env
 *.db
-*.db-wal
 *.db-shm
-swarm-orchestrator-state.json
-research/
-doodles/
+*.db-wal
 .DS_Store
+.env
+dist/
+doodles/
+node_modules/
+research/
+swarm-orchestrator-state.json

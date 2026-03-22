@@ -18,5 +18,14 @@ dockerfile = "Dockerfile"
 app_port = 3001
 hostname = "0.0.0.0"
 
+[health_check]
+path = "/health"
+interval = 30
+timeout = 10
+
+[resources]
+cpu = 4
+memory = "16Gi"
+
 [wallet]
 source = "TEE_GENERATED"

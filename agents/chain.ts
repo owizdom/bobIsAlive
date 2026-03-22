@@ -34,6 +34,9 @@ let totalSwapVolume = 0;
 let isStakedEndur = false;
 let stakeAmount = 0;
 let deathSettled = false;
+let totalBuybacks = 0;
+let totalYieldEarned = 0;
+let lastYieldCheckTime = 0;
 let cachedEthBalance = "0";
 let lastEthCheckTime = 0;
 let recentTxHashes: Array<{ type: string; hash: string; timestamp: number }> = [];
@@ -45,6 +48,7 @@ const EMERGENCY_COOLDOWN = 3 * 60 * 1000;
 const SWAP_COOLDOWN = 10 * 60 * 1000;
 const ETH_CHECK_INTERVAL = 2 * 60 * 1000;
 const EMERGENCY_CREDIT_THRESHOLD = 10;
+const BUYBACK_THRESHOLD = 5;
 const EMERGENCY_STRK_AMOUNT = 2;
 const STRK_TO_CREDIT_RATE = 10;
 const SWAP_AMOUNT = 0.5;            // STRK per swap
@@ -298,6 +302,77 @@ async function getEthBalance(): Promise<string> {
   } catch { return cachedEthBalance; }
 }
 
+// ── Buyback (Last Resort) ────────────────────────────────────────────────────
+
+async function buyback(metabolism: Metabolism): Promise<number> {
+  if (!chainReady) return 0;
+
+  try {
+    const bal = parseFloat(await getWalletBalance());
+    if (bal < 1) {
+      emit("chain", `BUYBACK FAILED. Only ${bal.toFixed(2)} STRK left. Nothing to sell.`);
+      return 0;
+    }
+
+    const sellAmount = Math.floor(bal * 0.5 * 100) / 100; // sell half, round down
+    const account = getStarkAccount();
+    const { CallData } = require("starknet");
+    const amountWei = BigInt(Math.floor(sellAmount * 1e18));
+
+    const result = await account.execute({
+      contractAddress: STRK_TOKEN,
+      entrypoint: "transfer",
+      calldata: CallData.compile({
+        recipient: getWalletAddress(),
+        amount: { low: amountWei & ((1n << 128n) - 1n), high: amountWei >> 128n },
+      }),
+    });
+
+    totalBuybacks++;
+    const hash = result.transaction_hash;
+    pushTx("buyback", hash);
+
+    const creditsEarned = sellAmount * STRK_TO_CREDIT_RATE;
+    metabolism.earn(creditsEarned, `BUYBACK: Sold ${sellAmount} STRK for ${creditsEarned}cr`, `chain-buyback-${totalBuybacks}`);
+
+    emit("chain", `BUYBACK: Sold ${sellAmount} STRK for ${creditsEarned}cr. Last resort survival. Tx: ${hash.slice(0, 18)}...`);
+    console.log(`[CHAIN] Buyback #${totalBuybacks}: ${sellAmount} STRK → ${creditsEarned}cr`);
+    return creditsEarned;
+  } catch (err: any) {
+    console.warn(`[CHAIN] Buyback failed: ${err?.message?.slice(0, 60) || err}`);
+    return 0;
+  }
+}
+
+// ── Endur Yield Check ────────────────────────────────────────────────────────
+
+async function checkEndurYield(): Promise<void> {
+  if (!chainReady || !isStakedEndur || Date.now() - lastYieldCheckTime < 30 * 60 * 1000) return;
+  lastYieldCheckTime = Date.now();
+
+  try {
+    const provider = getStarkProvider();
+    if (!provider) return;
+    const { CallData } = require("starknet");
+
+    // Check xSTRK balance
+    const result = await provider.callContract({
+      contractAddress: XSTRK_VAULT,
+      entrypoint: "balanceOf",
+      calldata: CallData.compile({ account: getWalletAddress() }),
+    });
+    const xStrkBal = BigInt(result[0]) + (BigInt(result[1] || 0) << 128n);
+    const xStrkAmount = Number(xStrkBal) / 1e18;
+
+    if (xStrkAmount > stakeAmount) {
+      const yieldEarned = xStrkAmount - stakeAmount;
+      totalYieldEarned += yieldEarned;
+      emit("chain", `YIELD: Endur staking earned ${yieldEarned.toFixed(4)} STRK. Total yield: ${totalYieldEarned.toFixed(4)} STRK`);
+      console.log(`[CHAIN] Endur yield: +${yieldEarned.toFixed(4)} STRK`);
+    }
+  } catch {}
+}
+
 // ── On-Chain Attestation Posting ──────────────────────────────────────────────
 
 async function postAttestationOnChain(): Promise<string | null> {
@@ -364,6 +439,12 @@ async function deathSettlement(): Promise<string | null> {
 export async function chainTick(creditBalance: number, metabolism: Metabolism, strkEarned: number): Promise<void> {
   if (!chainReady) return;
 
+  // Priority 0: Buyback (last resort, credits < 5)
+  if (creditBalance < BUYBACK_THRESHOLD) {
+    await buyback(metabolism);
+    return;
+  }
+
   // Priority 1: Emergency credit injection (critical balance)
   if (creditBalance < EMERGENCY_CREDIT_THRESHOLD) {
     await emergencyCreditInjection(metabolism);
@@ -402,6 +483,9 @@ export async function chainTick(creditBalance: number, metabolism: Metabolism, s
 
   // Priority 6: Heartbeat
   await chainHeartbeat();
+
+  // Background: check Endur yield
+  checkEndurYield().catch(() => {});
 }
 
 export async function chainDeath(): Promise<void> {
@@ -419,6 +503,8 @@ export interface ChainState {
   isStakedEndur: boolean;
   stakeAmount: number;
   ethBalance: string;
+  totalBuybacks: number;
+  totalYieldEarned: number;
   deathSettled: boolean;
   recentTxs: Array<{ type: string; hash: string; timestamp: number }>;
   lastHeartbeat: number;
@@ -434,6 +520,8 @@ export function getChainState(): ChainState {
     isStakedEndur,
     stakeAmount,
     ethBalance: cachedEthBalance,
+    totalBuybacks,
+    totalYieldEarned,
     deathSettled,
     recentTxs: [...recentTxHashes],
     lastHeartbeat: lastHeartbeatTime,

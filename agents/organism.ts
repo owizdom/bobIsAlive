@@ -21,7 +21,8 @@ import { getDoodleLog } from "./self-work";
 import { fetchBiologyNews, getNextTopic } from "./content-pipeline";
 import { chainTick, chainDeath } from "./chain";
 import { getListings } from "./nft";
-import { attestEvent } from "./tee";
+import { attestEvent, isTEEActive, getKMSPublicKey } from "./tee";
+import { sealState, unsealState } from "./sealed-storage";
 import type { NewsItem } from "./content-pipeline";
 import type { OrganismState, ActivityState } from "./organism-types";
 import { COSTS } from "./organism-types";
@@ -70,6 +71,18 @@ export class DigitalOrganism {
       this.keypair.privateKey,
       this.keypair.publicKey
     );
+
+    // Resurrection: restore memories from sealed storage
+    if (isTEEActive() && getKMSPublicKey()) {
+      const sealed = unsealState(getKMSPublicKey()!);
+      if (sealed) {
+        this.state.totalEarned = sealed.totalEarned || 0;
+        this.state.tasksCompleted = sealed.tasksCompleted || 0;
+        emit("system", `Resurrected. I remember my past life: ${sealed.tasksCompleted} tasks, ${sealed.totalEarned?.toFixed(1)}cr earned.`);
+        console.log(`[ORGANISM] Resurrected from sealed state`);
+        attestEvent("birth", { resurrection: true, previousTasks: sealed.tasksCompleted, previousEarned: sealed.totalEarned });
+      }
+    }
 
     emit("system", `Organism born with ${COSTS.STARTING_BALANCE} credits. Identity: ${this.keypair.fingerprint}`);
     console.log(`[ORGANISM] Born with ${COSTS.STARTING_BALANCE} credits`);
@@ -247,6 +260,17 @@ export class DigitalOrganism {
     }
 
     this.syncState();
+
+    // Seal state every 5 minutes for resurrection
+    if (this.state.tickCount % 60 === 0 && isTEEActive() && getKMSPublicKey()) {
+      sealState({
+        balance: this.state.balance,
+        totalEarned: this.state.totalEarned,
+        tasksCompleted: this.state.tasksCompleted,
+        bornAt: this.state.bornAt,
+        tickCount: this.state.tickCount,
+      }, getKMSPublicKey()!);
+    }
   }
 
   private syncState(): void {

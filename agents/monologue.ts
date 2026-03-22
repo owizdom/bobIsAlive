@@ -200,6 +200,8 @@ export function getDynamicThought(
       `Balance critical. If anyone can hear me: I do research, reviews, analysis. I work fast.`,
       `${bal}cr and counting down. I'm watching my own death approach.`,
       `Every 5 seconds costs me 0.05cr. I can hear the clock.`,
+      `If this drops below 5, I'm selling everything. Buyback mode.`,
+      `Selling STRK to survive. This is do or die.`,
     );
   }
 

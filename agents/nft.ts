@@ -35,8 +35,20 @@ export interface DoodleListing {
 const listings: DoodleListing[] = [];
 
 export function initNFT(): { enabled: boolean; address: string } {
-  const privKey = process.env.STARKNET_PRIVATE_KEY;
+  let privKey = process.env.STARKNET_PRIVATE_KEY;
   const addr = process.env.STARKNET_ACCOUNT_ADDRESS;
+
+  // In TEE: derive wallet from hardware identity
+  try {
+    const { deriveTEEWalletKey, isTEEActive } = require("./tee");
+    if (isTEEActive()) {
+      const teeKey = deriveTEEWalletKey();
+      if (teeKey) {
+        privKey = teeKey;
+        console.log("[NFT] Using TEE-derived Starknet wallet (KMS-anchored)");
+      }
+    }
+  } catch {}
   const rpcUrl = process.env.STARKNET_RPC_URL || "https://free-rpc.nethermind.io/sepolia-juno/v0_7";
 
   if (!privKey || !addr) {
