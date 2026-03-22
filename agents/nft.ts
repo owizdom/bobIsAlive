@@ -108,6 +108,21 @@ export async function getWalletBalance(): Promise<string> {
   } catch { return "0"; }
 }
 
+export async function getEthWalletBalance(): Promise<string> {
+  if (!starknetReady || !starkProvider) return "0";
+  try {
+    const ethAddr = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+    const { CallData } = require("starknet");
+    const result = await starkProvider.callContract({
+      contractAddress: ethAddr,
+      entrypoint: "balanceOf",
+      calldata: CallData.compile({ account: accountAddress }),
+    });
+    const bal = BigInt(result[0]) + (BigInt(result[1] || 0) << 128n);
+    return (Number(bal) / 1e18).toFixed(8);
+  } catch { return "0"; }
+}
+
 export async function listDoodle(
   title: string,
   description: string,

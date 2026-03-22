@@ -23,8 +23,10 @@ export default function App() {
   const [showIdentity, setShowIdentity] = useState(false)
   useEffect(() => {
     const poll = () => {
-      fetch(`${API}/api/nft/listings`).then(r => r.json()).then(d => setStrkBalance(d.walletBalance || '0')).catch(() => {})
-      fetch(`${API}/api/chain`).then(r => r.json()).then(d => setEthBalance(d.ethBalance || '0')).catch(() => {})
+      fetch(`${API}/api/wallet`).then(r => r.json()).then(d => {
+        setStrkBalance(d.strk || '0')
+        setEthBalance(d.eth || '0')
+      }).catch(() => {})
     }
     // Fetch prices
     fetch('https://api.coingecko.com/api/v3/simple/price?ids=starknet,ethereum&vs_currencies=usd')

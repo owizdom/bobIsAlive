@@ -33,7 +33,7 @@ import { buildAttestation } from "./keystore";
 import type { LLMConfig, TaskType } from "./organism-types";
 import { getDoodleLog, getImprovementLog, getTotalDoodlesCreated } from "./self-work";
 import { getRecentEntries } from "./monologue";
-import { initNFT, isNFTEnabled, getWalletAddress, getWalletBalance, getListings, getAvailableListings, buyDoodle } from "./nft";
+import { initNFT, isNFTEnabled, getWalletAddress, getWalletBalance, getEthWalletBalance, getListings, getAvailableListings, buyDoodle } from "./nft";
 import { TASK_REWARDS } from "./organism-types";
 import { getNewsCache } from "./content-pipeline";
 import { initChain, getChainState } from "./chain";
@@ -310,6 +310,13 @@ app.get("/api/improvements", (_req, res) => {
 // What bob is reading
 app.get("/api/news", (_req, res) => {
   res.json(getNewsCache());
+});
+
+// Live wallet balances (fetched from Starknet)
+app.get("/api/wallet", async (_req, res) => {
+  const strk = await getWalletBalance();
+  const eth = await getEthWalletBalance();
+  res.json({ strk, eth, address: getWalletAddress() });
 });
 
 // On-chain survival state
